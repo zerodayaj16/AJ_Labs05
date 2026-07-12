@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>SOC Log Viewer — Cyber Ops Center</title>
+<title>LogSage AI — Intelligent Security Analytics</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
   :root{
@@ -351,6 +351,48 @@
   .rep-settings input{background:#0d1319;border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:6px;font-family:var(--mono);font-size:12px;width:260px;}
   .rep-settings .chk{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text-dim);}
 
+  /* ---------- LogSage AI visual refresh ---------- */
+  :root{
+    --bg:#070816;
+    --panel:rgba(17,20,45,.82);
+    --panel-2:#171a39;
+    --border:rgba(129,140,248,.18);
+    --text:#F3F4FF;
+    --text-dim:#A8ADD0;
+    --text-faint:#6F769E;
+    --accent:#57E6FF;
+    --accent-dim:#5364D9;
+    --crit:#FF5370;
+    --high:#FF9F43;
+    --med:#FFD166;
+    --low:#2EE6A6;
+    --info:#57E6FF;
+  }
+  body{
+    background:
+      radial-gradient(circle at 82% 8%,rgba(83,100,217,.18),transparent 32%),
+      radial-gradient(circle at 18% 85%,rgba(87,230,255,.08),transparent 28%),
+      var(--bg);
+  }
+  #sidebar{background:rgba(10,12,29,.94);backdrop-filter:blur(18px);}
+  #topbar{background:rgba(10,12,29,.78);backdrop-filter:blur(18px);}
+  .brand .dot{background:linear-gradient(135deg,#57E6FF,#8B5CF6);box-shadow:0 0 20px rgba(87,230,255,.7);transform:rotate(45deg);}
+  .brand div b{font-size:15px;background:linear-gradient(90deg,#fff,#57E6FF);-webkit-background-clip:text;background-clip:text;color:transparent;}
+  .panel,.kpi,.det-card,.dropzone,.entity-block,.hunt-card,.tool-panel{box-shadow:0 14px 35px rgba(0,0,0,.18);backdrop-filter:blur(12px);}
+  .kpi{position:relative;overflow:hidden;cursor:pointer;transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease;}
+  .kpi::after{content:"";position:absolute;inset:auto -25% -65% 30%;height:90px;background:radial-gradient(circle,rgba(87,230,255,.16),transparent 65%);pointer-events:none;}
+  .kpi:hover,.kpi:focus-visible{transform:translateY(-4px);border-color:rgba(87,230,255,.58);box-shadow:0 18px 40px rgba(0,0,0,.28),0 0 0 1px rgba(87,230,255,.1);outline:none;}
+  .kpi b{letter-spacing:-1.5px;}
+  .nav-item{transition:background .16s ease,color .16s ease,transform .16s ease;}
+  .nav-item:hover{transform:translateX(3px);}
+  .nav-item.active{background:linear-gradient(90deg,rgba(83,100,217,.25),rgba(87,230,255,.06));border-color:rgba(87,230,255,.24);}
+  .btn{background:linear-gradient(135deg,#57E6FF,#8292FF);box-shadow:0 8px 22px rgba(87,230,255,.14);}
+  .bar-row[data-action]{cursor:pointer;padding:5px 6px;margin-left:-6px;margin-right:-6px;border-radius:6px;transition:background .15s ease,transform .15s ease;}
+  .bar-row[data-action]:hover{background:rgba(87,230,255,.06);transform:translateX(3px);}
+  .bar-fill{background:linear-gradient(90deg,#5364D9,#57E6FF);}
+  .table-wrap,textarea#pasteBox,.toolbar input,.toolbar select{box-shadow:inset 0 1px 0 rgba(255,255,255,.02);}
+  @media (max-width:900px){.kpi-row{grid-template-columns:repeat(2,1fr)}.grid2{grid-template-columns:1fr}}
+
   @media print{
     #sidebar, #topbar{display:none !important;}
     #content{padding:0;overflow:visible;}
@@ -363,7 +405,7 @@
 <div id="app">
 
   <div id="sidebar">
-    <div class="brand"><div class="dot"></div><div><b>SOC Log Viewer</b><span>Cyber Ops Center</span></div></div>
+    <div class="brand"><div class="dot"></div><div><b>LogSage AI</b><span>Security Intelligence</span></div></div>
 
     <div class="nav-group-label">Overview</div>
     <div class="nav-item active" data-view="upload"><span>⇪ Upload</span></div>
@@ -410,7 +452,7 @@
 
   <div id="main">
     <div id="topbar">
-      <div><span class="title">SOC Log Viewer</span><span class="sub" id="topSub">No logs loaded</span></div>
+      <div><span class="title">LogSage AI</span><span class="sub" id="topSub">No logs loaded</span></div>
       <div style="display:flex;gap:10px;align-items:center;">
         <span class="pill" id="topPill">OFFLINE · RULE-BASED</span>
         <div class="session-menu">
@@ -1591,8 +1633,8 @@ function exportMitreNavigator(){
     (r.technique||"").split("/").map(t=>t.trim()).filter(t=>/^T\d/.test(t)).forEach(t=>{ techScores[t] = (techScores[t]||0) + hits; });
   });
   const layer = {
-    name: "SOC Log Viewer Coverage", versions:{attack:"14",navigator:"4.9.1",layer:"4.5"}, domain:"enterprise-attack",
-    description: "Auto-generated from loaded logs by SOC Log Viewer — score is detection hit count per technique.",
+    name: "LogSage AI Coverage", versions:{attack:"14",navigator:"4.9.1",layer:"4.5"}, domain:"enterprise-attack",
+    description: "Auto-generated from loaded logs by LogSage AI — score is detection hit count per technique.",
     techniques: Object.entries(techScores).map(([id,score])=>({techniqueID:id, score, color:"", comment:"", enabled:true})),
     gradient: {colors:["#3DBE7A","#F2C94C","#E5484D"], minValue:0, maxValue: Math.max(1,...Object.values(techScores))},
     legendItems: [], showTacticRowBackground:false, tacticRowBackground:"#dddddd", selectTechniquesAcrossTactics:true,
@@ -1684,24 +1726,24 @@ function renderDashboard(){
   const userSet = new Set(RAW_EVENTS.map(e=>e.user).filter(Boolean));
 
   document.getElementById("kpiRow").innerHTML = `
-    <div class="kpi"><b>${RAW_EVENTS.length}</b><span>Events</span></div>
-    <div class="kpi crit"><b>${DET_HITS.length}</b><span>Detections</span></div>
-    <div class="kpi crit"><b>${sevCounts.CRITICAL}</b><span>Critical</span></div>
-    <div class="kpi high"><b>${sevCounts.HIGH}</b><span>High</span></div>
-    <div class="kpi"><b>${hostSet.size}</b><span>Hosts</span></div>
-    <div class="kpi"><b>${userSet.size}</b><span>Users</span></div>
+    <div class="kpi" tabindex="0" role="button" onclick="dashboardOpen('table')" onkeydown="dashboardKey(event,'table')"><b>${RAW_EVENTS.length}</b><span>Events ↗</span></div>
+    <div class="kpi crit" tabindex="0" role="button" onclick="dashboardOpen('detections')" onkeydown="dashboardKey(event,'detections')"><b>${DET_HITS.length}</b><span>Detections ↗</span></div>
+    <div class="kpi crit" tabindex="0" role="button" onclick="dashboardSeverity('CRITICAL')" onkeydown="dashboardKey(event,'severity','CRITICAL')"><b>${sevCounts.CRITICAL}</b><span>Critical ↗</span></div>
+    <div class="kpi high" tabindex="0" role="button" onclick="dashboardSeverity('HIGH')" onkeydown="dashboardKey(event,'severity','HIGH')"><b>${sevCounts.HIGH}</b><span>High ↗</span></div>
+    <div class="kpi" tabindex="0" role="button" onclick="dashboardOpen('network')" onkeydown="dashboardKey(event,'network')"><b>${hostSet.size}</b><span>Hosts ↗</span></div>
+    <div class="kpi" tabindex="0" role="button" onclick="dashboardOpen('ueba')" onkeydown="dashboardKey(event,'ueba')"><b>${userSet.size}</b><span>Users ↗</span></div>
   `;
 
   const tacticCounts = {};
   DET_HITS.forEach(h=> tacticCounts[h.rule.tactic] = (tacticCounts[h.rule.tactic]||0)+1 );
   const maxT = Math.max(1, ...Object.values(tacticCounts));
   document.getElementById("tacticBars").innerHTML = Object.entries(tacticCounts).sort((a,b)=>b[1]-a[1]).map(([t,c])=>`
-    <div class="bar-row"><span class="label">${esc(t)}</span><div class="bar-track"><div class="bar-fill" style="width:${c/maxT*100}%"></div></div><span class="count">${c}</span></div>
+    <div class="bar-row" data-action="detections" onclick="dashboardOpen('detections')" title="Open detection details"><span class="label">${esc(t)}</span><div class="bar-track"><div class="bar-fill" style="width:${c/maxT*100}%"></div></div><span class="count">${c}</span></div>
   `).join("") || `<div class="empty-state" style="padding:20px 0;">No detections yet</div>`;
 
   const totalSev = Object.values(sevCounts).reduce((a,b)=>a+b,0) || 1;
   document.getElementById("sevBars").innerHTML = ["CRITICAL","HIGH","MEDIUM","LOW"].map(s=>`
-    <div class="bar-row"><span class="label">${s}</span><div class="bar-track"><div class="bar-fill" style="width:${sevCounts[s]/totalSev*100}%;background:${sevColor[s]}"></div></div><span class="count">${sevCounts[s]}</span></div>
+    <div class="bar-row" data-action="severity" onclick="dashboardSeverity('${s}')" title="Filter logs by ${s.toLowerCase()} severity"><span class="label">${s}</span><div class="bar-track"><div class="bar-fill" style="width:${sevCounts[s]/totalSev*100}%;background:${sevColor[s]}"></div></div><span class="count">${sevCounts[s]}</span></div>
   `).join("");
 
   const byRule = {};
@@ -1709,6 +1751,22 @@ function renderDashboard(){
   const top = Object.values(byRule).sort((a,b)=>b.items.length-a.items.length).slice(0,6);
   document.getElementById("topDetections").innerHTML = top.map(d=>detCardHTML(d)).join("") || `<div class="empty-state">No rules fired against the loaded logs.</div>`;
 }
+
+window.dashboardOpen = function(view){
+  const nav = document.querySelector(`[data-view="${view}"]`);
+  if(nav) nav.click();
+};
+window.dashboardSeverity = function(severity){
+  tableFilterSev = severity;
+  document.getElementById("sevFilter").value = severity;
+  renderTable();
+  dashboardOpen("table");
+};
+window.dashboardKey = function(event,action,value){
+  if(event.key!=="Enter" && event.key!==" ") return;
+  event.preventDefault();
+  action==="severity" ? dashboardSeverity(value) : dashboardOpen(action);
+};
 
 function detCardHTML(d){
   const ex = d.items[0];
