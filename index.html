@@ -391,7 +391,9 @@
   .bar-row[data-action]:hover{background:rgba(87,230,255,.06);transform:translateX(3px);}
   .bar-fill{background:linear-gradient(90deg,#5364D9,#57E6FF);}
   .table-wrap,textarea#pasteBox,.toolbar input,.toolbar select{box-shadow:inset 0 1px 0 rgba(255,255,255,.02);}
+  .dash-hero{display:grid;grid-template-columns:220px 1fr;gap:16px;margin-bottom:16px;}.threat-card{display:flex;align-items:center;gap:16px;background:linear-gradient(135deg,rgba(83,100,217,.22),rgba(255,83,112,.09));}.threat-ring{--score:0;width:104px;height:104px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--ring-color,var(--accent)) calc(var(--score)*1%),rgba(255,255,255,.08) 0);position:relative;flex-shrink:0;}.threat-ring::before{content:"";position:absolute;inset:9px;background:#11142D;border-radius:50%;}.threat-ring b{position:relative;font-family:var(--mono);font-size:28px;z-index:1;}.attention-list{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}.attention-item{background:rgba(8,10,25,.48);border:1px solid var(--border);border-radius:8px;padding:12px;cursor:pointer;transition:.16s ease;}.attention-item:hover{border-color:var(--accent);transform:translateY(-2px);}.attention-item small{display:block;color:var(--text-faint);text-transform:uppercase;letter-spacing:.7px;margin-bottom:5px;}.attention-item b{font-size:13px;word-break:break-word;}.dash-filter{display:flex;gap:8px;align-items:center;margin-bottom:14px;padding:10px 12px;background:var(--panel);border:1px solid var(--border);border-radius:9px;}.dash-filter input,.dash-filter select{background:#0d1027;border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:6px;min-width:0;}.dash-filter input{flex:1;}.drawer-backdrop{position:fixed;inset:0;background:rgba(2,3,12,.58);z-index:80;opacity:0;pointer-events:none;transition:opacity .2s ease;}.investigation-drawer{position:fixed;z-index:81;right:0;top:0;height:100vh;width:min(520px,94vw);background:#0D1025;border-left:1px solid var(--border);box-shadow:-24px 0 60px rgba(0,0,0,.45);padding:22px;overflow:auto;transform:translateX(105%);transition:transform .24s ease;}body.drawer-open .drawer-backdrop{opacity:1;pointer-events:auto;}body.drawer-open .investigation-drawer{transform:none;}.drawer-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:18px;}.drawer-close{background:transparent;border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 9px;cursor:pointer;}.workflow-row{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:14px 0;}.workflow-btn{background:#161A39;border:1px solid var(--border);color:var(--text-dim);padding:8px 4px;border-radius:6px;cursor:pointer;font-size:10.5px;}.workflow-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(87,230,255,.08);}.drawer-note{width:100%;min-height:110px;background:#080A19;border:1px solid var(--border);color:var(--text);border-radius:7px;padding:10px;font-family:var(--mono);resize:vertical;}.toast{position:fixed;right:20px;bottom:20px;background:#151936;border:1px solid rgba(87,230,255,.4);color:var(--text);padding:11px 15px;border-radius:8px;z-index:100;box-shadow:0 14px 40px rgba(0,0,0,.35);transform:translateY(25px);opacity:0;pointer-events:none;transition:.2s ease;}.toast.show{transform:none;opacity:1;}.mobile-menu{display:none;}body.light-mode{--bg:#F3F5FB;--panel:rgba(255,255,255,.88);--panel-2:#E8EBF6;--border:rgba(48,58,106,.16);--text:#12152B;--text-dim:#4C5578;--text-faint:#77809E;background:#F3F5FB;}body.light-mode #sidebar,body.light-mode #topbar{background:rgba(247,248,253,.94);}body.light-mode .threat-ring::before{background:#fff;}body.light-mode .dash-filter input,body.light-mode .dash-filter select,body.light-mode .drawer-note{background:#fff;color:#12152B;}body.light-mode .investigation-drawer{background:#F7F8FD;}
   @media (max-width:900px){.kpi-row{grid-template-columns:repeat(2,1fr)}.grid2{grid-template-columns:1fr}}
+  @media (max-width:700px){#sidebar{position:fixed;z-index:70;height:100%;transform:translateX(-105%);transition:.2s ease}body.menu-open #sidebar{transform:none}.mobile-menu{display:inline-flex}.dash-hero{grid-template-columns:1fr}.attention-list{grid-template-columns:1fr}.workflow-row{grid-template-columns:repeat(2,1fr)}#content{padding:16px 14px 50px}.top-optional{display:none}}
 
   @media print{
     #sidebar, #topbar{display:none !important;}
@@ -452,8 +454,10 @@
 
   <div id="main">
     <div id="topbar">
+      <button class="btn ghost sm mobile-menu" id="mobileMenuBtn" aria-label="Open navigation">☰</button>
       <div><span class="title">LogSage AI</span><span class="sub" id="topSub">No logs loaded</span></div>
       <div style="display:flex;gap:10px;align-items:center;">
+        <button class="btn ghost sm" id="themeBtn" title="Switch theme" aria-label="Switch color theme">☀</button>
         <span class="pill" id="topPill">OFFLINE · RULE-BASED</span>
         <div class="session-menu">
           <button class="btn ghost" id="sessionBtn">Session</button>
@@ -496,6 +500,11 @@
 
       <!-- ============ DASHBOARD ============ -->
       <div class="view hidden" id="view-dashboard">
+        <div class="dash-hero">
+          <div class="panel threat-card"><div class="threat-ring" id="threatRing"><b id="threatScore">0</b></div><div><span class="section-title" style="margin-bottom:5px;">Threat score</span><b id="threatLabel">Quiet</b><p style="font-size:10.5px;color:var(--text-faint);margin:5px 0 0;">Weighted from detections</p></div></div>
+          <div class="panel"><h4>What needs attention now?</h4><div class="attention-list" id="attentionList"></div></div>
+        </div>
+        <div class="dash-filter"><input id="dashSearch" placeholder="Search host, user, process, IP or command…"><select id="dashSev"><option value="">All severities</option><option>CRITICAL</option><option>HIGH</option><option>MEDIUM</option><option>LOW</option></select><button class="btn sm" id="dashApply">Explore logs</button><button class="btn ghost sm" id="dashReset">Reset</button></div>
         <div class="kpi-row" id="kpiRow"></div>
         <div class="grid2">
           <div class="panel">
@@ -784,6 +793,9 @@
     </div>
   </div>
 </div>
+<div class="drawer-backdrop" id="drawerBackdrop"></div>
+<aside class="investigation-drawer" id="investigationDrawer" aria-hidden="true"><div id="drawerContent"></div></aside>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
 let RAW_EVENTS = [];
@@ -792,6 +804,8 @@ let disabledRules = new Set();
 let ackedRuleIds = new Set();
 let showAcked = false;
 let focusedDetIndex = -1;
+let investigationState = {};
+try{ investigationState = JSON.parse(localStorage.getItem("logsage_investigations")||"{}"); }catch(e){ investigationState = {}; }
 let CORR_HITS = [];
 let wlIps = [], wlDomains = [];
 let ipIntel = {};   // ip -> {country, asn}
@@ -1724,6 +1738,19 @@ function renderDashboard(){
   RAW_EVENTS.forEach(e=> sevCounts[e.severity] !== undefined ? sevCounts[e.severity]++ : sevCounts.LOW++ );
   const hostSet = new Set(RAW_EVENTS.map(e=>e.host).filter(Boolean));
   const userSet = new Set(RAW_EVENTS.map(e=>e.user).filter(Boolean));
+  const threatRaw = DET_HITS.reduce((sum,h)=>sum+(sevWeight[h.rule.severity]||1),0);
+  const threatScore = Math.min(100, Math.round(threatRaw/2));
+  const threatColor = threatScore>=75?"var(--crit)":threatScore>=45?"var(--high)":threatScore>=20?"var(--med)":"var(--low)";
+  document.getElementById("threatScore").textContent = threatScore;
+  document.getElementById("threatLabel").textContent = threatScore>=75?"Severe":threatScore>=45?"Elevated":threatScore>=20?"Guarded":"Quiet";
+  const threatRing = document.getElementById("threatRing");
+  threatRing.style.setProperty("--score",threatScore); threatRing.style.setProperty("--ring-color",threatColor);
+  const rank = key=>Object.entries(DET_HITS.reduce((m,h)=>{const v=h.event[key];if(v)m[v]=(m[v]||0)+(sevWeight[h.rule.severity]||1);return m;},{})).sort((a,b)=>b[1]-a[1])[0];
+  const topHost=rank("host"), topUser=rank("user"), newest=DET_HITS.slice().sort((a,b)=>new Date(b.event.time)-new Date(a.event.time))[0];
+  document.getElementById("attentionList").innerHTML = `
+    <div class="attention-item" onclick="dashboardOpen('network')"><small>Highest-risk host</small><b>${esc(topHost?.[0]||"No activity")}</b></div>
+    <div class="attention-item" onclick="dashboardOpen('ueba')"><small>Highest-risk user</small><b>${esc(topUser?.[0]||"No activity")}</b></div>
+    <div class="attention-item" onclick="${newest?`openInvestigation('${newest.rule.id}')`:"dashboardOpen('upload')"}"><small>Latest signal</small><b>${esc(newest?.rule.title||"Load logs to begin")}</b></div>`;
 
   document.getElementById("kpiRow").innerHTML = `
     <div class="kpi" tabindex="0" role="button" onclick="dashboardOpen('table')" onkeydown="dashboardKey(event,'table')"><b>${RAW_EVENTS.length}</b><span>Events ↗</span></div>
@@ -1836,7 +1863,7 @@ function renderDetections(){
     const hosts = [...new Set(d.items.map(e=>e.host).filter(Boolean))];
     const users = [...new Set(d.items.map(e=>e.user).filter(Boolean))];
     const acked = ackedRuleIds.has(d.rule.id);
-    let html = `<div id="card-${d.rule.id}" class="det-card ${d.rule.severity} ${acked?'acked':''} ${i===focusedDetIndex?'focused':''}" onclick="toggleRuleDetail('${d.rule.id}')">
+    let html = `<div id="card-${d.rule.id}" class="det-card ${d.rule.severity} ${acked?'acked':''} ${i===focusedDetIndex?'focused':''}" onclick="openInvestigation('${d.rule.id}')">
       <button class="ack-btn" onclick="event.stopPropagation();toggleAck('${d.rule.id}')">${acked?"Unack":"Ack"}</button>
       <div class="top"><h5>${esc(d.rule.title)}</h5><span class="sev-tag sev-${d.rule.severity}">${d.rule.severity}</span></div>
       <div class="meta">ATT&amp;CK ${esc(d.rule.technique)} · ${esc(d.rule.tactic)}${d.rule.custom?' · custom':''}</div>
@@ -1868,6 +1895,21 @@ function renderDetections(){
 }
 window.toggleRuleDetail = function(id){ expandedRule = expandedRule===id ? null : id; renderDetections(); };
 window.toggleAck = function(id){ if(ackedRuleIds.has(id)) ackedRuleIds.delete(id); else ackedRuleIds.add(id); renderDetections(); };
+window.showToast = function(message){ const el=document.getElementById("toast"); el.textContent=message; el.classList.add("show"); clearTimeout(window.toastTimer); window.toastTimer=setTimeout(()=>el.classList.remove("show"),2200); };
+window.openInvestigation = function(ruleId){
+  const group = detectionCardList().find(d=>d.rule.id===ruleId) || (()=>{ const hits=DET_HITS.filter(h=>h.rule.id===ruleId); return hits.length?{rule:hits[0].rule,items:hits.map(h=>h.event)}:null; })();
+  if(!group) return;
+  const ex=group.items[0], state=investigationState[ruleId]||{status:"New",note:""};
+  document.getElementById("drawerContent").innerHTML = `<div class="drawer-head"><div><span class="sev-tag sev-${group.rule.severity}">${group.rule.severity}</span><h2 style="font-size:18px;margin:10px 0 3px;">${esc(group.rule.title)}</h2><span style="font-size:11px;color:var(--text-faint);">ATT&amp;CK ${esc(group.rule.technique)} · ${esc(group.rule.tactic)}</span></div><button class="drawer-close" onclick="closeInvestigation()" aria-label="Close investigation">✕</button></div>
+    <div class="panel" style="padding:12px;"><b style="font-size:12px;">Analyst summary</b><p style="font-size:12px;line-height:1.55;color:var(--text-dim);margin-bottom:0;">${group.items.length} matching event${group.items.length===1?"":"s"} involving ${esc(ex.host||"an unknown host")} and ${esc(ex.user||"an unknown user")}. ${esc(group.rule.playbook||"")}</p></div>
+    <div class="workflow-row">${["New","Investigating","Escalated","Closed"].map(s=>`<button class="workflow-btn ${state.status===s?'active':''}" onclick="setInvestigationStatus('${ruleId}','${s}')">${s}</button>`).join("")}</div>
+    <table class="kv-table"><tr><td>Time</td><td>${fmtTime(ex.time)}</td></tr><tr><td>Host</td><td>${esc(ex.host)}</td></tr><tr><td>User</td><td>${esc(ex.user)}</td></tr><tr><td>Process</td><td>${esc(ex.process)}</td></tr><tr><td>Command</td><td style="white-space:normal;word-break:break-word;">${esc(ex.cmd)}</td></tr><tr><td>Source</td><td>${esc(ex.src_ip)}</td></tr><tr><td>Destination</td><td>${esc(ex.dst_ip||ex.domain)}</td></tr></table>
+    <h4 style="margin:18px 0 7px;">Analyst notes</h4><textarea class="drawer-note" id="drawerNote" placeholder="Record findings, ownership and next steps…">${esc(state.note||"")}</textarea><div style="display:flex;gap:8px;margin-top:9px;"><button class="btn sm" onclick="saveInvestigationNote('${ruleId}')">Save note</button><button class="btn ghost sm" onclick="setTableFilter(${JSON.stringify(ex.host||ex.user||"")});closeInvestigation()">View related logs</button></div>`;
+  document.body.classList.add("drawer-open"); document.getElementById("investigationDrawer").setAttribute("aria-hidden","false");
+};
+window.closeInvestigation = function(){ document.body.classList.remove("drawer-open"); document.getElementById("investigationDrawer").setAttribute("aria-hidden","true"); };
+window.setInvestigationStatus = function(id,status){ investigationState[id]={...(investigationState[id]||{}),status}; localStorage.setItem("logsage_investigations",JSON.stringify(investigationState)); openInvestigation(id); showToast(`Status changed to ${status}`); };
+window.saveInvestigationNote = function(id){ investigationState[id]={...(investigationState[id]||{}),note:document.getElementById("drawerNote").value}; localStorage.setItem("logsage_investigations",JSON.stringify(investigationState)); showToast("Investigation note saved locally"); };
 document.addEventListener("keydown", (e)=>{
   const view = document.getElementById("view-detections");
   if(!view || view.classList.contains("hidden")) return;
@@ -2717,6 +2759,18 @@ document.getElementById("exportBtn").onclick = ()=>{
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob); a.download = "soc_log_export.csv"; a.click();
 };
+
+const savedTheme = localStorage.getItem("logsage_theme");
+if(savedTheme==="light") document.body.classList.add("light-mode");
+document.getElementById("themeBtn").textContent = document.body.classList.contains("light-mode") ? "☾" : "☀";
+document.getElementById("themeBtn").addEventListener("click",()=>{ document.body.classList.toggle("light-mode"); const light=document.body.classList.contains("light-mode"); localStorage.setItem("logsage_theme",light?"light":"dark"); document.getElementById("themeBtn").textContent=light?"☾":"☀"; showToast(`${light?"Light":"Dark"} theme enabled`); });
+document.getElementById("dashApply").addEventListener("click",()=>{ tableFilterText=document.getElementById("dashSearch").value.trim(); tableFilterSev=document.getElementById("dashSev").value; document.getElementById("tableSearch").value=tableFilterText; document.getElementById("sevFilter").value=tableFilterSev; renderTable(); dashboardOpen("table"); });
+document.getElementById("dashSearch").addEventListener("keydown",e=>{if(e.key==="Enter")document.getElementById("dashApply").click();});
+document.getElementById("dashReset").addEventListener("click",()=>{ document.getElementById("dashSearch").value="";document.getElementById("dashSev").value="";tableFilterText="";tableFilterSev="";renderTable();showToast("Dashboard filters cleared"); });
+document.getElementById("mobileMenuBtn").addEventListener("click",()=>document.body.classList.toggle("menu-open"));
+document.querySelectorAll("#sidebar .nav-item").forEach(el=>el.addEventListener("click",()=>document.body.classList.remove("menu-open")));
+document.getElementById("drawerBackdrop").addEventListener("click",closeInvestigation);
+document.addEventListener("keydown",e=>{if(e.key==="Escape"){closeInvestigation();document.body.classList.remove("menu-open");}});
 
 render();
 </script>
